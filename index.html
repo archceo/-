@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ГЕО-КВЕСТ 3D — путешествие по планете</title>
+<style>
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{width:100%; height:100%; overflow:hidden; font-family:"Segoe UI", system-ui, -apple-system, sans-serif; background:#0c1b2a; color:#17303f;}
+  canvas#scene{position:fixed; inset:0; width:100%; height:100%; display:block;}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed; top:0; left:0; right:0; display:flex; align-items:center; gap:14px;
+    padding:10px 16px; z-index:20; pointer-events:none;}
+  .hudBox{pointer-events:auto; background:rgba(255,255,255,.82); backdrop-filter:blur(8px);
+    border:2px solid rgba(255,255,255,.9); border-radius:16px; padding:8px 14px;
+    box-shadow:0 6px 18px rgba(0,20,40,.18); font-weight:700; font-size:15px; color:#1c4157;}
+  #hud .logo{font-size:17px; letter-spacing:.5px;}
+  #hud .logo span{color:#0e9ae0;}
+  #hudLevel{font-size:14px; font-weight:600; color:#3a6b85;}
+  #hudScore{margin-left:auto; font-size:16px; color:#a35b00;}
+  #hudScore b{color:#e08000; font-size:19px;}
+
+  #dots{position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:20;
+    display:flex; gap:8px; background:rgba(255,255,255,.75); padding:6px 12px; border-radius:999px;
+    box-shadow:0 4px 12px rgba(0,20,40,.15); pointer-events:none;}
+  .dot{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:13px; background:#dfeaf2; border:2px solid #b9cfe0; transition:.3s;}
+  .dot.active{background:#ffe08a; border-color:#f2b705; transform:scale(1.18);}
+  .dot.done{background:#8ee08a; border-color:#3fb54a;}
+
+  /* ---------- Вопросы ---------- */
+  #panel{position:fixed; right:18px; top:50%; transform:translateY(-50%); width:430px; max-width:calc(100vw - 32px);
+    z-index:25; background:linear-gradient(160deg,rgba(255,255,255,.96),rgba(238,247,255,.96));
+    border:3px solid #ffffff; border-radius:24px; padding:18px 20px 20px;
+    box-shadow:0 18px 50px rgba(0,25,50,.3); transition:opacity .3s, transform .3s;}
+  #panel.hidden{opacity:0; pointer-events:none; transform:translateY(-50%) translateX(40px);}
+  .panelHead{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .badge{background:linear-gradient(90deg,#0e9ae0,#39c2f0); color:#fff; font-size:12px; font-weight:800;
+    padding:5px 12px; border-radius:999px; letter-spacing:.4px; text-transform:uppercase;}
+  .qCount{font-size:13px; font-weight:700; color:#5b829a;}
+  .qProgress{display:flex; gap:6px; margin-bottom:12px;}
+  .qProgress i{flex:1; height:7px; border-radius:6px; background:#d5e5f0; transition:.3s;}
+  .qProgress i.on{background:linear-gradient(90deg,#39c2f0,#0e9ae0);}
+  .qProgress i.ok{background:linear-gradient(90deg,#6ddc72,#2eb84a);}
+  .qProgress i.bad{background:linear-gradient(90deg,#ff9d7a,#ef5f3c);}
+  #pQuestion{font-size:18px; font-weight:800; color:#123449; line-height:1.35; margin-bottom:14px;}
+  .opt{display:flex; align-items:center; gap:10px; width:100%; text-align:left; cursor:pointer;
+    background:#fff; border:2px solid #cfe2ef; border-radius:14px; padding:11px 12px; margin-bottom:9px;
+    font-size:15px; font-weight:600; color:#20495f; transition:.15s; font-family:inherit;}
+  .opt:hover{border-color:#39c2f0; background:#f0faff; transform:translateX(3px);}
+  .opt .letter{flex:0 0 28px; height:28px; border-radius:9px; background:#e8f3fb; color:#0e9ae0;
+    font-weight:800; display:flex; align-items:center; justify-content:center; font-size:14px;}
+  .opt.correct{border-color:#2eb84a; background:#eafbe9; }
+  .opt.correct .letter{background:#2eb84a; color:#fff;}
+  .opt.wrong{border-color:#ef5f3c; background:#fdeeea;}
+  .opt.wrong .letter{background:#ef5f3c; color:#fff;}
+  .opt:disabled{cursor:default; transform:none;}
+  .opt.hide{display:none;}
+  #pFeedback{display:none; animation:pop .3s ease;}
+  #pFeedback.show{display:block;}
+  #pFeedback .verdict{font-weight:800; font-size:15px; margin-bottom:8px;}
+  #pFeedback .verdict.ok{color:#2eb84a;}
+  #pFeedback .verdict.no{color:#ef5f3c;}
+  .fact{background:linear-gradient(140deg,#fff8e1,#ffefc2); border:2px dashed #f2c14e; border-radius:14px;
+    padding:11px 13px; font-size:14px; line-height:1.45; color:#6b4c00; margin-bottom:12px;}
+  .fact b{display:block; margin-bottom:4px; color:#c47f00;}
+  .btn{display:inline-block; cursor:pointer; border:none; border-radius:14px; padding:12px 22px;
+    font-size:16px; font-weight:800; font-family:inherit; color:#fff;
+    background:linear-gradient(90deg,#0e9ae0,#39c2f0); box-shadow:0 6px 16px rgba(14,154,224,.4);
+    transition:.15s;}
+  .btn:hover{transform:translateY(-2px); filter:brightness(1.07);}
+  .btn.green{background:linear-gradient(90deg,#2eb84a,#6ddc72); box-shadow:0 6px 16px rgba(46,184,74,.4);}
+  .btn.amber{background:linear-gradient(90deg,#f0a000,#ffcc4d); box-shadow:0 6px 16px rgba(240,160,0,.4); color:#5a3b00;}
+  .btn.ghost{background:#eef5fa; color:#2b6c8e; box-shadow:none; border:2px solid #cfe2ef; font-size:14px; padding:9px 16px;}
+  #hintBtn{width:100%; margin-top:4px;}
+
+  /* ---------- Модальные экраны ---------- */
+  #modal{position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center;
+    background:rgba(6,22,36,.55); backdrop-filter:blur(5px); padding:20px; transition:opacity .3s;}
+  #modal.hidden{opacity:0; pointer-events:none;}
+  .card{width:min(620px,100%); max-height:90vh; overflow:auto; background:linear-gradient(165deg,#ffffff,#eef8ff);
+    border:4px solid #fff; border-radius:28px; padding:30px 32px; text-align:center;
+    box-shadow:0 24px 70px rgba(0,15,35,.5); animation:pop .35s ease;}
+  .card h1{font-size:34px; margin-bottom:6px; color:#0c4c6e; letter-spacing:.5px;}
+  .card h2{font-size:27px; margin-bottom:10px; color:#0c4c6e;}
+  .card p{font-size:16px; line-height:1.55; color:#33607c; margin-bottom:14px;}
+  .card .bigEmoji{font-size:56px; margin-bottom:8px; display:block;}
+  .howto{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:16px 0 20px;}
+  .howto div{background:#fff; border:2px solid #d8ecfa; border-radius:16px; padding:12px 14px; width:170px;
+    font-size:13.5px; line-height:1.4; color:#3d6c88; font-weight:600;}
+  .howto b{display:block; font-size:20px; margin-bottom:5px;}
+  .chips{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin:12px 0 18px;}
+  .chip{background:#e9f6ff; border:1.5px solid #bfe3fa; color:#136590; font-size:12.5px; font-weight:700;
+    padding:5px 11px; border-radius:999px;}
+  .scoreLine{font-size:20px; font-weight:800; color:#e08000; margin:6px 0 4px;}
+  .rank{font-size:26px; font-weight:900; color:#0c4c6e; margin:8px 0 4px;}
+  .loader{width:56px; height:56px; margin:6px auto 16px; border-radius:50%;
+    border:7px solid #d7ecfa; border-top-color:#0e9ae0; animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @keyframes pop{from{opacity:0; transform:scale(.93) translateY(12px);} to{opacity:1; transform:none;}}
+
+  #loadErr{position:fixed; inset:0; z-index:99; display:none; align-items:center; justify-content:center;
+    background:#0c1b2a; color:#cfe8f7; text-align:center; padding:30px; font-size:17px; line-height:1.6;}
+
+  @media (max-width:820px){
+    #panel{right:8px; left:8px; width:auto; top:auto; bottom:8px; transform:none; max-height:56vh; overflow:auto;}
+    #panel.hidden{transform:translateY(40px);}
+    #dots{top:56px;}
+    .card{padding:22px 18px;}
+    .card h1{font-size:26px;}
+    .howto div{width:135px; font-size:12px;}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+
+<div id="hud">
+  <div class="hudBox logo">🌍 ГЕО-<span>КВЕСТ</span> 3D</div>
+  <div class="hudBox" id="hudLevel">Локация не выбрана</div>
+  <div class="hudBox" id="hudScore">⭐ <b id="scoreVal">0</b> очков</div>
+</div>
+
+<div id="dots"></div>
+
+<div id="panel" class="hidden">
+  <div class="panelHead">
+    <span class="badge" id="pTag">Локация</span>
+    <span class="qCount" id="pCount">Вопрос 1 из 3</span>
+  </div>
+  <div class="qProgress" id="pProgress"><i></i><i></i><i></i></div>
+  <div id="pQuestion">…</div>
+  <div id="pOptions"></div>
+  <div id="pFeedback">
+    <div class="verdict" id="pVerdict"></div>
+    <div class="fact" id="pFact"></div>
+    <button class="btn green" id="pNext" style="width:100%">Дальше ➜</button>
+  </div>
+  <button class="btn ghost" id="hintBtn">💡 Подсказка 50:50 (один раз на уровень)</button>
+</div>
+
+<div id="modal">
+  <div class="card" id="modalCard"></div>
+</div>
+
+<div id="loadErr">
+  <div>🌍<br><b>Не удалось загрузить Three.js</b><br><br>
+  Проверьте подключение к интернету и обновите страницу (F5).</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+if (typeof THREE === 'undefined') {
+  setTimeout(() => { if (typeof THREE === 'undefined') {
+    document.getElementById('loadErr').style.display = 'flex';
+    document.getElementById('modal').classList.add('hidden');
+  }}, 4000);
+} else {
+/* ================================================================
+   ГЕО-КВЕСТ 3D — квест-игра по географии (1–7 классы)
+   5 локаций по картинкам × 3 вопроса + интересные факты
+   ================================================================ */
+
+/* ---------------- ДАННЫЕ ИГРЫ ---------------- */
+const LEVELS = [
+ {
+  name:"Горная долина", emoji:"⛰️", tag:"Локация 1 · Горы и озеро",
+  intro:"Ты стоишь на берегу ледяного озера среди заснеженных вершин. Река несётся в долину, а с утёса рушится водопад. Прежде чем тропа приведёт тебя дальше — покажи, что ты знаешь горы!",
+  shortFacts:["Эверест — 8848 м","Байкал — 1642 м","Водопад Анхель — 979 м"],
+  questions:[
+   { q:"Какая самая высокая гора на Земле?",
+     a:["Эльбрус — 5642 м","Джомолунгма (Эверест) — 8848 м","Килиманджаро — 5895 м","Монблан — 4808 м"], c:1,
+     f:"Джомолунгма (Эверест) — 8848,86 м! Причём гора всё ещё растёт: тектонические плиты поднимают её примерно на 4 мм в год. А всего 100 м подъёма — и температура падает почти на 0,6 °C."},
+   { q:"Какое самое глубокое озеро планеты?",
+     a:["Танганьика","Байкал","Ладожское","Каспийское"], c:1,
+     f:"Байкал — 1642 м глубины. В нём хранится около 20 % всей пресной воды Земли, а живут здесь более 2500 видов животных и растений — почти все нигде больше не встречаются!"},
+   { q:"Какой водопад самый высокий в мире?",
+     a:["Ниагарский","Виктория","Анхель (Венесуэла)","Игуасу"], c:2,
+     f:"Водопад Анхель — 979 метров! Вода падает с вершины столообразной горы Ауянтепуй и почти не долетает до земли: её разносит ветер в виде мелкого тумана."}
+  ]
+ },
+ {
+  name:"Пиратский остров", emoji:"🏴‍☠️", tag:"Локация 2 · Остров и море",
+  intro:"«Полный вперёд!» Корабль причалил к необитаемому острову с пальмами и каменной аркой. На песке — открытый сундук с золотом… Но карта дальше лежит только у того, кто ответит на 3 вопроса!",
+  shortFacts:["Гренландия — самый большой остров","Саргассово море — без берегов","Большой Барьерный риф виден из космоса"],
+  questions:[
+   { q:"Какой остров самый большой в мире?",
+     a:["Мадагаскар","Гренландия","Новая Зеландия","Великобритания"], c:1,
+     f:"Гренландия — 2 166 086 км², это как 3 Украины или вся Индия! 80 % острова скрыто подо льдом толщиной до 3 км, а название переводится как «зелёная страна» — викинги назвали её так, чтобы заманить сюда поселенцев."},
+   { q:"Единственное в мире море без берегов, где плавают водорослевые «плоты»?",
+     a:["Саргассово море","Мраморное море","Красное море","Балтийское море"], c:0,
+     f:"Саргассово море ограничено не берегами, а только течениями. Древние мореплаватели боялись его: корабли, попав в густые саргассовые водоросли, будто застревали и не могли двигаться."},
+   { q:"Самый большой коралловый риф планеты находится у берегов…",
+     a:["Египта","Бали","Австралии","Мадагаскара"], c:2,
+     f:"Большой Барьерный риф у Австралии тянется на 2300 км — его видно даже из космоса! Это самый большой живой организм на Земле: дом для 1500 видов рыб и 400 видов кораллов."}
+  ]
+ },
+ {
+  name:"Тропический лес", emoji:"🌴", tag:"Локация 3 · Джунгли",
+  intro:"Воздух влажный и горячий, вокруг пальмы, орхидеи и крики попугаев. Тропа уходит вглубь зелёного мира. За тремя ответами — выход к следующей локации!",
+  shortFacts:["Амазония — 60 % тропических лесов","Амазонка несёт 20 % речной воды","У экватора день = ночь"],
+  questions:[
+   { q:"Где находится самый большой тропический лес планеты?",
+     a:["В Африке","В Южной Америке, в бассейне Амазонки","В Австралии","В Индии"], c:1,
+     f:"Амазонский лес — 5,5 млн км², это 60 % всех тропических лесов Земли. Его называют «лёгкими планеты»: деревья вырабатывают около 20 % кислорода, который мы вдыхаем."},
+   { q:"Какая река несёт к океану больше всех воды в мире?",
+     a:["Нил","Амазонка","Янцзы","Волга"], c:1,
+     f:"Амазонка уступает Нилу лишь в длине (6992 км против 6850), но по водности — рекордсмен: каждую секунду она выносит около 200 000 м³ воды — это примерно пятая часть всей речной воды планеты."},
+   { q:"Какой климат у экватора?",
+     a:["Холодный полярный","Жаркий и влажный круглый год","Сухой пустынный","Умеренный, четыре сезона"], c:1,
+     f:"У экватора солнце почти всегда высоко, поэтому +25…+30 °C и ливни почти каждый день. А ещё здесь идеальный «распорядок»: день и ночь длятся поровну — по 12 часов."}
+  ]
+ },
+ {
+  name:"Болото", emoji:"🐸", tag:"Локация 4 · Болото",
+  intro:"Тропа уходит под воду: кувшинки, камыш, старые поваленные деревья и тихая зелёная гладь. Здесь легко заблудиться… Если знаешь факты о болотах — тебя не поймать!",
+  shortFacts:["Васюганское болото — №1 в мире","Болота поглощают CO₂","Торф — порода из растений"],
+  questions:[
+   { q:"Какое самое большое болото в мире?",
+     a:["Васюганское в Западной Сибири","Припятское в Беларуси","Болота Амазонии","Болота Сенегала"], c:0,
+     f:"Васюганское болото — около 53 000 км², это как небольшая страна! Оно образовалось около 10 000 лет назад на месте отступления ледника и хранит миллиарды тонн торфа."},
+   { q:"Что болото делает с воздухом?",
+     a:["Очищает его и поглощает углекислый газ","Делает его сухим","Ничего не делает","Выделяет песок"], c:0,
+     f:"Болота — «фильтры» планеты: они очищают воду, поглощают углекислый газ и служат домом для птиц. По болотным озёрам каждую ось миллионы перелётных птиц выбирают место для отдыха."},
+   { q:"Что такое торф?",
+     a:["Разновидность алмаза","Порода из не до конца перепревших растений","Жидкая нефть","Вулканическая зола"], c:1,
+     f:"Торф — это мхи и травы, которые тысячелетиями копились в воде и не успели перепреть. Он горит, а из него делают удобрения и лекарства. Запасы торфа в России — одни из крупнейших в мире."}
+  ]
+ },
+ {
+  name:"Луг у старого дуба", emoji:"🌼", tag:"Локация 5 · Луг и равнина",
+  intro:"Наконец-то суша! Зелёные холмы, цветы и большой дуб с деревянной табличкой. Это последняя локация: три вопроса — и квест завершён!",
+  shortFacts:["Русская равнина — 4 млн км²","Устье Волги — дельта 32 000 км²","Плато — «стол» со склонами"],
+  questions:[
+   { q:"Какая самая большая равнина России?",
+     a:["Восточно-Европейская (Русская)","Западно-Сибирская","Туранская","Прикаспийская"], c:0,
+     f:"Восточно-Европейская равнина — около 4 млн км²! Почти вся Россия к западу от Урала лежит на ней: это леса, реки, озёра и плодородные чернозёмы."},
+   { q:"Как называется место, где река впадает в море или озеро?",
+     a:["Исток","Устье","Приток","Порог"], c:1,
+     f:"Устье — это «рот» реки. У Волги, самой длинной реки России (3530 км), устье образует дельту площадью около 32 000 км², где река разбивается на сотни рукавов и протоков."},
+   { q:"Как называется плоская возвышенность с крутыми склонами?",
+     a:["Холм","Плато","Долина","Низина"], c:1,
+     f:"Плато в переводе — «стол»: ровная поверхность стоит на крутых склонах. Например, Декканское плато в Индии, а на Гвианском плато в Южной Америке находится водопад Анхель — самый высокий на Земле!"}
+  ]
+ }
+];
+
+const ZONE_X   = [0, 150, 300, 450, 600];
+const ATMOS = [
+ {top:0x2b8fe0, bottom:0xd9f1ff, fog:0xd9f1ff, near:80,  far:330},
+ {top:0x1f9fd8, bottom:0xd6f4ff, fog:0xcdeefb, near:60,  far:230},
+ {top:0x2fa0e0, bottom:0xe8fbff, fog:0xd6f2e6, near:45,  far:190},
+ {top:0x5f9fbe, bottom:0xd5ecd9, fog:0xbfe0c8, near:30,  far:150},
+ {top:0x3f9fe8, bottom:0xeaf7ff, fog:0xeaf7ff, near:70,  far:290}
+];
+const CAM = [
+ {r:52, h:22, look:8,  start:Math.PI/2},
+ {r:50, h:19, look:5,  start:Math.PI/2 + .5},
+ {r:45, h:16, look:6,  start:Math.PI/2},
+ {r:44, h:15, look:4,  start:Math.PI/2 - .4},
+ {r:50, h:18, look:7,  start:Math.PI/2}
+];
+
+/* ---------------- СОСТОЯНИЕ ИГРЫ ---------------- */
+const G = { level:0, q:0, score:0, levelScore:0, tried:false, hintUsed:false, locked:false, started:false };
+
+const $ = id => document.getElementById(id);
+const scoreVal = $('scoreVal'), hudLevel = $('hudLevel');
+const panel = $('panel'), modal = $('modal'), modalCard = $('modalCard');
+
+function updateHud(){
+  scoreVal.textContent = G.score;
+  hudLevel.textContent = LEVELS[G.level] ? (LEVELS[G.level].emoji + ' ' + LEVELS[G.level].name) : '—';
+}
+function buildDots(){
+  const d = $('dots'); d.innerHTML = '';
+  LEVELS.forEach((L, i) => {
+    const s = document.createElement('span');
+    s.className = 'dot' + (i < G.level ? ' done' : i === G.level ? ' active' : '');
+    s.textContent = L.emoji; d.appendChild(s);
+  });
+}
+function showModal(html){ modalCard.innerHTML = html; modal.classList.remove('hidden'); }
+function hideModal(){ modal.classList.add('hidden'); }
+
+/* ---------------- ЗВУКИ ---------------- */
+let actx = null;
+function tone(freq, dur, delay=0, type='sine', vol=.12){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = freq;
+    const t0 = actx.currentTime + delay;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + .02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(actx.destination);
+    o.start(t0); o.stop(t0 + dur + .05);
+  }catch(e){}
+}
+const sRight = () => { tone(660,.16); tone(880,.22,.14); };
+const sWrong = () => { tone(240,.18,0,'square',.08); tone(180,.25,.14,'square',.08); };
+const sWin   = () => { [523,659,784,1046].forEach((f,i)=>tone(f,.22,i*.13,'triangle',.1)); };
+const sClick = () => tone(520,.07,0,'triangle',.06);
+
+/* ================================================================
+   THREE.JS: МИР
+   ================================================================ */
+const canvas = $('scene');
+/* авторские hex-цвета считаем sRGB -> three сам конвертирует в linear,
+   а renderer.outputEncoding=sRGB обратно вернёт исходные оттенки (без «дымки») */
+if (THREE.ColorManagement && 'legacyMode' in THREE.ColorManagement) THREE.ColorManagement.legacyMode = false;
+const AUTOTEST = location.search.indexOf('autotest') >= 0;
+const WRONGMODE = location.search.indexOf('wrong') >= 0;
+const SHOTM = location.search.match(/shot=(\d)/);
+const SHOTLEVEL = SHOTM ? parseInt(SHOTM[1], 10) : -1;
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight, false);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xd9f1ff, 80, 330);
+scene.background = new THREE.Color(0xd9f1ff);
+
+const camera = new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 3000);
+
+/* --- небо-градиент --- */
+const skyU = {
+  top:{value:new THREE.Color(ATMOS[0].top)},
+  bottom:{value:new THREE.Color(ATMOS[0].bottom)}
+};
+const sky = new THREE.Mesh(
+  new THREE.SphereGeometry(1400, 32, 16),
+  new THREE.ShaderMaterial({
+    uniforms: skyU, side: THREE.BackSide, depthWrite:false, fog:false,
+    vertexShader:'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader:'varying vec3 vP; uniform vec3 top; uniform vec3 bottom; void main(){ float h = clamp(normalize(vP).y*0.65+0.32,0.0,1.0); gl_FragColor = vec4(mix(bottom, top, h), 1.0); #include <tonemapping_fragment>\n#include <encodings_fragment> }'
+  })
+);
+sky.frustumCulled = false;
+scene.add(sky);
+
+/* --- свет --- */
+const hemi = new THREE.HemisphereLight(0xffffff, 0x77996a, .5);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3d6, .8);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -75; sun.shadow.camera.right = 75;
+sun.shadow.camera.top = 75;   sun.shadow.camera.bottom = -75;
+sun.shadow.camera.near = 1;   sun.shadow.camera.far = 300;
+sun.shadow.bias = -0.0007;
+scene.add(sun); scene.add(sun.target);
+
+/* --- вспомогательное --- */
+const animated = [];
+const rnd = (a, b) => a + Math.random() * (b - a);
+const M = (color, o = {}) => new THREE.MeshStandardMaterial(Object.assign({color, roughness:.92, metalness:0}, o));
+const box  = (w,h,d,c,o) => new THREE.Mesh(new THREE.BoxGeometry(w,h,d), M(c,o));
+const cyl  = (rt,rb,h,c,s=12,o) => new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,s), M(c,o));
+const sph  = (r,c,o,ws=14,hs=10) => new THREE.Mesh(new THREE.SphereGeometry(r,ws,hs), M(c,o));
+const cone = (r,h,c,s=10,o) => new THREE.Mesh(new THREE.ConeGeometry(r,h,s), M(c,o));
+const dode = (r,c,o) => new THREE.Mesh(new THREE.DodecahedronGeometry(r,0), M(c,o));
+
+function reg(o, shadow=true){ o.castShadow = shadow; o.receiveShadow = true; return o; }
+
+/* мягкая «радиальная» текстура для краёв воды, тропинок и лужаев */
+function softTex(){
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(128,128,0,128,128,128);
+  gr.addColorStop(0,'#fff'); gr.addColorStop(.72,'#fff'); gr.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0,0,256,256);
+  return new THREE.CanvasTexture(c);
+}
+const SOFT = softTex();
+
+function patch(x, color, r, y=0.05, opacity=1){
+  const m = new THREE.Mesh(new THREE.CircleGeometry(r, 64),
+    new THREE.MeshStandardMaterial({color, roughness:1, transparent:true, opacity, alphaMap:SOFT, depthWrite:false}));
+  m.rotation.x = -Math.PI/2; m.position.set(x, y, 0); m.receiveShadow = true;
+  scene.add(m); return m;
+}
+function water(x, z, r, color, opacity=.88, y=.12){
+  const m = new THREE.Mesh(new THREE.CircleGeometry(r, 64),
+    new THREE.MeshStandardMaterial({color, roughness:.12, metalness:.25, transparent:true, opacity, alphaMap:SOFT}));
+  m.rotation.x = -Math.PI/2; m.position.set(x, y, z);
+  scene.add(m);
+  animated.push(t => { m.position.y = y + Math.sin(t*1.2 + x)*0.035; });
+  return m;
+}
+function canvasTex(draw, w=128, h=128){
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
+}
+
+/* --- общий ландшафт --- */
+const world = new THREE.Group(); scene.add(world);
+{
+  const g = new THREE.Mesh(new THREE.CircleGeometry(900, 72), M(0x74b04a));
+  g.rotation.x = -Math.PI/2; g.receiveShadow = true; world.add(g);
+}
+
+/* ---------------- ОБЩЕ ЭЛЕМЕНТЫ ---------------- */
+function cloudAt(x, y, z, s=1, speed=1.1){
+  const g = new THREE.Group();
+  for(let i=0;i<5;i++){
+    const b = sph(rnd(2.6,5.2), 0xffffff, {roughness:1}, 12, 8);
+    b.position.set(rnd(-6,6), rnd(-1.2,1.6), rnd(-2.5,2.5));
+    b.scale.y = .65; b.castShadow = false; g.add(b);
+  }
+  g.position.set(x,y,z); g.scale.setScalar(s); world.add(g);
+  const x0 = x;
+  animated.push((t,dt) => { g.position.x += dt*speed; if(g.position.x > x0+70) g.position.x = x0-70; });
+  return g;
+}
+function mountain(x, z, h, r, rock=0x8b93a3){
+  const g = new THREE.Group();
+  const base = reg(cone(r, h, rock, 7));
+  base.position.y = h/2 - 1; base.rotation.y = rnd(0, 6.28);
+  base.material.flatShading = true;
+  g.add(base);
+  const snow = reg(cone(r*.44, h*.34, 0xffffff, 7));
+  snow.position.y = h - h*.17 - 1; snow.rotation.y = base.rotation.y;
+  snow.material.flatShading = true; g.add(snow);
+  g.position.set(x, 0, z); world.add(g); return g;
+}
+function hill(x, z, r, color, sy=.24){
+  const h = reg(sph(r, color), false);
+  h.scale.y = sy; h.position.set(x, 0, z); h.receiveShadow = true; world.add(h); return h;
+}
+function palm(x, z, s=1, leafA=0x3fa34d, leafB=0x2f8b3f){
+  const g = new THREE.Group();
+  const trunk = reg(cyl(.4,.75,9,0x8a6a3f,8));
+  trunk.position.y = 4.5; trunk.rotation.z = rnd(-.1,.1); g.add(trunk);
+  const top = new THREE.Group(); top.position.y = 9; g.add(top);
+  for(let i=0;i<7;i++){
+    const pivot = new THREE.Group(); pivot.rotation.y = i/7*Math.PI*2; top.add(pivot);
+    const leaf = reg(new THREE.Mesh(new THREE.SphereGeometry(1,8,6), M(i%2?leafA:leafB)), false);
+    leaf.scale.set(4.6,.26,1.2); leaf.position.x = 2.7;
+    leaf.rotation.z = -.42 + rnd(-.12,.1); pivot.add(leaf);
+  }
+  for(let i=0;i<3;i++){
+    const c = reg(sph(.35, 0x6b4a22), false);
+    c.position.set(rnd(-.7,.7), -.5, rnd(-.7,.7)); top.add(c);
+  }
+  g.position.set(x,0,z); g.scale.setScalar(s); world.add(g);
+  animated.push(t => { top.rotation.z = Math.sin(t*.7 + x)*.045; top.rotation.x = Math.cos(t*.6 + z)*.035; });
+  return g;
+}
+function flowerPatch(x, z, colors, n=12, r=7){
+  for(let i=0;i<n;i++){
+    const f = reg(sph(rnd(.18,.34), colors[(Math.random()*colors.length)|0], {roughness:.7}), false);
+    f.position.set(x + rnd(-r,r), rnd(.2,.45), z + rnd(-r,r));
+    world.add(f);
+    const stem = cyl(.03,.03,.35,0x3f8b3f,5); stem.position.set(f.position.x, .17, f.position.z); world.add(stem);
+  }
+}
+function rocks(x, z, n=5, r=1.5, color=0x9aa0a8){
+  for(let i=0;i<n;i++){
+    const s = reg(dode(rnd(r*.5,r), color), false);
+    s.position.set(x+rnd(-6,6), rnd(0,.6), z+rnd(-6,6));
+    s.rotation.set(rnd(0,3), rnd(0,3), rnd(0,3));
+    world.add(s);
+  }
+}
+
+/* ================================================================
+   ЛОКАЦИЯ 1 — ГОРНАЯ ДОЛИНА
+   ================================================================ */
+function buildMountains(){
+  const x = ZONE_X[0];
+  patch(x, 0x6fae4f, 85);
+  patch(x + 8, 0x8fc46a, 40, .07);
+
+  // горный хребет
+  const line = [[-72,-58,46,17],[-52,-64,60,20],[-30,-58,40,15],[-8,-66,66,22],[14,-58,52,18],
+                [36,-64,70,23],[58,-58,48,17],[76,-52,38,14],[-88,-46,34,13],[92,-44,32,12]];
+  line.forEach((m,i) => mountain(x + m[0], m[1], m[2], m[3], i%3===0 ? 0x7fa06a : 0x8b93a3));
+  // зелёные предгорья
+  hill(x-40,-34,20,0x5fae4a); hill(x+30,-30,24,0x66b455); hill(x+64,-26,16,0x5fae4a);
+
+  // озеро и река
+  water(x + 8, 8, 25, 0x35b7e6, .9, .13);
+  const river = new THREE.Mesh(new THREE.PlaneGeometry(7, 34),
+    new THREE.MeshStandardMaterial({color:0x4cc3ec, roughness:.15, metalness:.2, transparent:true, opacity:.9, alphaMap:SOFT}));
+  river.rotation.x = -Math.PI/2; river.position.set(x + 8, .12, 46); world.add(river);
+
+  // скала с башенками (слева)
+  const cliffL = reg(cyl(5,8,11,0x9a8b76,8)); cliffL.position.set(x-32, 5.5, -2); world.add(cliffL);
+  const keep = reg(box(7,9,7,0xe6dcc8)); keep.position.set(x-32, 15, -2); world.add(keep);
+  const keepRoof = reg(cone(5.6,5,0x7fb0d8,4)); keepRoof.position.set(x-32, 22, -2); keepRoof.rotation.y = Math.PI/4; world.add(keepRoof);
+  [[-3.4,2.6],[3.4,-2.6]].forEach(p => {
+    const t = reg(cyl(1.6,1.8,8,0xefe6d4,8)); t.position.set(x-32+p[0], 13.5, -2+p[1]); world.add(t);
+    const r = reg(cone(2.2,3.4,0x7fb0d8,8)); r.position.set(x-32+p[0], 19, -2+p[1]); world.add(r);
+  });
+
+  // водопад справа
+  const cliffR = reg(cyl(6,10,16,0x8f8474,8)); cliffR.position.set(x+36, 8, -6); world.add(cliffR);
+  const fall = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 15),
+    new THREE.MeshStandardMaterial({color:0xeafaff, roughness:.2, transparent:true, opacity:.78, side:THREE.DoubleSide, emissive:0x9ad8ef, emissiveIntensity:.35}));
+  fall.position.set(x+36, 7.5, 2.2); world.add(fall);
+  const splash = water(x+36, 5, 4.5, 0xdff6ff, .85, .2);
+  animated.push(t => { fall.material.opacity = .68 + Math.sin(t*7)*.1; fall.position.y = 7.5 + Math.sin(t*4)*.12; });
+
+  rocks(x-14, 26, 6, 1.6); rocks(x+20, 30, 5, 1.3, 0xa8b0b8);
+  flowerPatch(x-6, 34, [0xff7fb0, 0xffd447, 0xb45dff], 14, 8);
+
+  cloudAt(x-30, 46, -30, 1.3); cloudAt(x+26, 54, -46, 1.6, .8);
+  cloudAt(x+50, 40, 10, 1, 1.4); cloudAt(x-56, 34, 26, .9, 1.6);
+}
+
+/* ================================================================
+   ЛОКАЦИЯ 2 — ПИРАТСКИЙ ОСТРОВ
+   ================================================================ */
+function buildIsland(){
+  const x = ZONE_X[1];
+  water(x, 0, 84, 0x1fa5d8, .97, .08);
+  water(x, 6, 52, 0x5fd0f0, .4, .11);
+
+  // песчаная коса
+  const sand = reg(sph(21, 0xf3d684), false); sand.scale.y = .13; sand.position.set(x, .3, 2); sand.receiveShadow = true; world.add(sand);
+  const sand2 = reg(sph(13, 0xeccd7a), false); sand2.scale.y = .12; sand2.position.set(x-14, .2, 12); world.add(sand2);
+  const sand3 = reg(sph(11, 0xf0d280), false); sand3.scale.y = .12; sand3.position.set(x+13, .2, -8); world.add(sand3);
+
+  // каменная арка
+  const arch = reg(new THREE.Mesh(new THREE.TorusGeometry(7, 2, 8, 22, Math.PI), M(0x9a9a94)));
+  arch.position.set(x + 4, 0, -12); arch.rotation.y = .5; arch.material.flatShading = true; world.add(arch);
+  rocks(x + 4, -12, 6, 2, 0x9a9a94);
+
+  // пальмы
+  palm(x-8, -4, 1.15, 0x4bb04f, 0x2f8b3f);
+  palm(x+6, 8, .95, 0x63b84a, 0x3f9e3f);
+  palm(x-16, 10, .85, 0x4bb04f, 0x2f8b3f);
+  palm(x+14, 4, 1.05, 0x63b84a, 0x3f9e3f);
+
+  // сундук с сокровищами
+  const chest = new THREE.Group();
+  const cbase = reg(box(4.4, 2.4, 2.8, 0x7a4a22)); cbase.position.y = 1.2; chest.add(cbase);
+  const lid = reg(box(4.4, .5, 2.8, 0x8a5528)); lid.position.set(0, 2.7, -1.3); lid.rotation.x = -1.1; chest.add(lid);
+  const lock = reg(box(.7, .9, .3, 0xffd447, {metalness:.7, roughness:.3})); lock.position.set(0, 1.6, 1.5); chest.add(lock);
+  for(let i=0;i<14;i++){
+    const coin = reg(cyl(.32,.32,.1,0xffd447,10,{metalness:.75, roughness:.25}), false);
+    coin.position.set(rnd(-3.4,3.4), rnd(.06,.5), rnd(2.2,4.6));
+    coin.rotation.set(rnd(0,.5), rnd(0,3), rnd(0,.5));
+    chest.add(coin);
+  }
+  chest.position.set(x-2, .9, 4); chest.rotation.y = .35; world.add(chest);
+
+  // бочки
+  [[x-9, 9],[x-6.4, 11.6]].forEach(p => {
+    const b = reg(cyl(1.2,1.2,2.6,0x9a6234,12)); b.position.set(p[0], 2.1, p[1]); world.add(b);
+    const r1 = new THREE.Mesh(new THREE.TorusGeometry(1.22,.1,6,16), M(0x5b3a1c));
+    r1.rotation.x = Math.PI/2; r1.position.set(p[0], 2.8, p[1]); world.add(r1);
+    const r2 = r1.clone(); r2.position.y = 1.4; world.add(r2);
+  });
+
+  // корабль
+  const ship = new THREE.Group();
+  const hull = reg(box(15, 4, 5.6, 0x8a4b2a)); hull.position.y = 2; ship.add(hull);
+  const bow = reg(cone(2.8, 5.5, 0x8a4b2a, 4)); bow.rotation.z = -Math.PI/2; bow.position.set(9.6, 2, 0); bow.rotation.x = Math.PI/4; ship.add(bow);
+  const stern = reg(box(4.5, 6.5, 5.6, 0x7a4025)); stern.position.set(-7.4, 4.4, 0); ship.add(stern);
+  const deck = reg(box(19, .5, 5.8, 0xb07a45)); deck.position.y = 4.1; ship.add(deck);
+  [0, -5].forEach((mx, i) => {
+    const mast = reg(cyl(.28,.34, 13+i*2, 0x6b4526, 8)); mast.position.set(mx, 4 + (13+i*2)/2, 0); ship.add(mast);
+    const sail = reg(new THREE.Mesh(new THREE.PlaneGeometry(7.5, 7),
+      new THREE.MeshStandardMaterial({color:0x3a2b4d, roughness:.9, side:THREE.DoubleSide})), false);
+    sail.position.set(mx, 11 + i*1.6, 0); ship.add(sail);
+    const yard = reg(cyl(.16,.16,8.4,0x6b4526,6), false); yard.rotation.z = Math.PI/2;
+    yard.position.set(mx, 14.4 + i*2, 0); ship.add(yard);
+  });
+  // флаг с черепом
+  const flagTex = canvasTex((g,w,h) => {
+    g.fillStyle = '#141414'; g.fillRect(0,0,w,h);
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(w*.5, h*.42, h*.2, 0, 7); g.fill();
+    g.fillRect(w*.42, h*.55, w*.16, h*.14);
+    g.fillStyle = '#141414';
+    g.beginPath(); g.arc(w*.43, h*.4, h*.05, 0, 7); g.fill();
+    g.beginPath(); g.arc(w*.57, h*.4, h*.05, 0, 7); g.fill();
+    g.fillRect(w*.46, h*.58, w*.03, h*.09); g.fillRect(w*.53, h*.58, w*.03, h*.09);
+    g.fillRect(w*.3, h*.78, w*.4, h*.05); g.fillRect(w*.36, h*.7, w*.05, h*.2); g.fillRect(w*.59, h*.7, w*.05, h*.2);
+  }, 96, 64);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.2),
+    new THREE.MeshStandardMaterial({map:flagTex, side:THREE.DoubleSide, roughness:.9}));
+  flag.position.set(1.9, 18.4, 0); ship.add(flag);
+  const pole = reg(cyl(.12,.12,3,0x6b4526,6), false); pole.position.set(.3, 18, 0); ship.add(pole);
+
+  ship.position.set(x + 30, -.4, 16); ship.rotation.y = -.55; ship.scale.setScalar(.92); world.add(ship);
+  animated.push(t => { ship.rotation.z = Math.sin(t*1.1)*.05; ship.position.y = -.4 + Math.sin(t*1.35)*.4; ship.rotation.x = Math.sin(t*.9)*.03; });
+
+  cloudAt(x-40, 34, -40, 1.3, 1.4); cloudAt(x+34, 40, -30, 1.1, 1); cloudAt(x, 46, -60, 1.5, .8);
+}
+
+/* ================================================================
+   ЛОКАЦИЯ 3 — ТРОПИЧЕСКИЙ ЛЕС
+   ================================================================ */
+function buildJungle(){
+  const x = ZONE_X[2];
+  patch(x, 0x3f8b3f, 85);
+  patch(x, 0x2f7a38, 55, .07, .8);
+
+  // тропинка из мягких кругов
+  for(let i=0;i<12;i++){
+    const t = new THREE.Mesh(new THREE.CircleGeometry(rnd(4.6,6.4), 26),
+      new THREE.MeshStandardMaterial({color:0xe8c98e, roughness:1, transparent:true, alphaMap:SOFT, depthWrite:false}));
+    t.rotation.x = -Math.PI/2;
+    t.position.set(x + Math.sin(i*.55)*7, .1, 58 - i*9.5);
+    t.receiveShadow = true; world.add(t);
+  }
+
+  // тропические деревья и пальмы вдоль тропы
+  const treeSpots = [[-26,20],[-20,-6],[-30,-30],[24,26],[30,0],[22,-24],[-12,44],[16,46],[36,-44],[-34,44]];
+  treeSpots.forEach((p,i) => {
+    const tx = x + p[0], tz = p[1];
+    if(i % 3 === 0){ palm(tx, tz, rnd(.95,1.3), 0x6ec24a, 0x3f9e3f); return; }
+    const h = rnd(9, 14);
+    const trunk = reg(cyl(.5,.9,h,0x7d5a35,8)); trunk.position.set(tx, h/2, tz); world.add(trunk);
+    const shades = [0x2f8f3f, 0x3fae4f, 0x277a36, 0x4bbb5c];
+    for(let b=0;b<3;b++){
+      const bl = reg(sph(rnd(3.6,5.4), shades[(Math.random()*shades.length)|0]), false);
+      bl.position.set(tx + rnd(-3,3), h + rnd(-.5,3.5), tz + rnd(-3,3));
+      world.add(bl);
+    }
+    animated.push(t => { trunk.rotation.z = Math.sin(t*.5 + tx)*.02; });
+  });
+
+  // цветы и кусты
+  flowerPatch(x, 30, [0xff6fb1, 0xff9a3c, 0xffd447, 0xffffff], 16, 12);
+  flowerPatch(x-18, -18, [0xb45dff, 0xff6fb1, 0xff5b5b], 14, 10);
+  flowerPatch(x+20, 8, [0xffd447, 0xff9a3c, 0xffffff], 14, 10);
+  [[-16,12],[18,-14],[-26,34],[28,36],[8,-36]].forEach(p => {
+    const b1 = reg(sph(rnd(2.4,3.6), 0x2b7a34, undefined, 12, 8), false);
+    b1.scale.y = .8; b1.position.set(x+p[0], 1.6, p[1]); world.add(b1);
+  });
+  rocks(x-10, 40, 5, 1.6, 0x9aa8a0);
+  rocks(x+14, -34, 4, 1.4, 0x9aa8a0);
+
+  // дальние холмы
+  hill(x-50, -55, 30, 0x2f7a38, .3); hill(x+45, -58, 34, 0x347f3c, .28);
+
+  cloudAt(x-30, 52, -50, 1.4, 1); cloudAt(x+34, 58, -40, 1.2, 1.3);
+}
+
+/* ================================================================
+   ЛОКАЦИЯ 4 — БОЛОТО
+   ================================================================ */
+function buildSwamp(){
+  const x = ZONE_X[3];
+  patch(x, 0x4e6b40, 82);
+  patch(x, 0x405c36, 50, .07, .85);
+  water(x, 6, 27, 0x57917a, .93, .14);
+  water(x + 2, 6, 16, 0x4a8070, .8, .16);
+
+  // поваленные брёвна в воде
+  function log(px, pz, len, rot){
+    const g = new THREE.Group();
+    const body = reg(cyl(1.15,1.3,len,0x9c6b3f,10));
+    body.rotation.z = Math.PI/2; g.add(body);
+    [len/2, -len/2].forEach(e => {
+      const cap = new THREE.Mesh(new THREE.CircleGeometry(1.18, 12), M(0xe0b877));
+      cap.rotation.y = e > 0 ? Math.PI/2 : -Math.PI/2; cap.position.x = e + (e>0?.01:-.01);
+      g.add(cap);
+    });
+    g.position.set(px, .95, pz); g.rotation.y = rot; world.add(g);
+    return g;
+  }
+  const l1 = log(x - 6, 8, 13, .4);
+  log(x + 9, 2, 10, -0.7);
+  // грибы на бревне
+  for(let i=0;i<4;i++){
+    const stem = cyl(.12,.16,.5,0xf0e6d0,6); stem.position.set(rnd(-3,3), 1.8, rnd(-.4,.4)); l1.add(stem);
+    const cap = sph(.4, 0xc94b3a, undefined, 10, 6); cap.scale.y = .6;
+    cap.position.set(stem.position.x, 2.1, stem.position.z); l1.add(cap);
+  }
+
+  // пни
+  [[x-18,-6],[x+16,16],[x+20,-8]].forEach(p => {
+    const s = reg(cyl(1.5,1.8,3.4,0x8a6a3f,9)); s.position.set(p[0], 1.7, p[1]); world.add(s);
+    const top = new THREE.Mesh(new THREE.CircleGeometry(1.5, 14), M(0xe0b877));
+    top.rotation.x = -Math.PI/2; top.position.set(p[0], 3.42, p[1]); world.add(top);
+    const shoot = cyl(.12,.14,2.2,0x4f8b3f,6); shoot.position.set(p[0]+.7, 4.4, p[1]); world.add(shoot);
+    const leaf = sph(.7, 0x4f8b3f); leaf.scale.set(1,.3,.5); leaf.position.set(p[0]+1.4, 5.4, p[1]); world.add(leaf);
+  });
+
+  // кувшинки
+  for(let i=0;i<22;i++){
+    const a = rnd(0, 6.28), rr = rnd(3, 24);
+    const px = x + 2 + Math.cos(a)*rr, pz = 6 + Math.sin(a)*rr;
+    const pad = reg(new THREE.Mesh(new THREE.CircleGeometry(rnd(.9,1.7), 12),
+      M(0x4f9e4a, {roughness:.7})), false);
+    pad.rotation.x = -Math.PI/2; pad.position.set(px, .2, pz); world.add(pad);
+    if(Math.random() < .45){
+      const fl = reg(sph(.38, 0xffffff, {roughness:.5}, 10, 8), false);
+      fl.position.set(px + rnd(-.4,.4), .5, pz + rnd(-.4,.4)); world.add(fl);
+      const core = sph(.15, 0xffd447, undefined, 8, 6); core.position.copy(fl.position); core.position.y += .28; world.add(core);
+    }
+    const y0 = pad.position.y;
+    animated.push(t => { pad.position.y = y0 + Math.sin(t*1.5 + px)*.04; });
+  }
+
+  // камыши
+  for(let i=0;i<26;i++){
+    const a = rnd(0,6.28), rr = rnd(24, 32);
+    const cx = x + 2 + Math.cos(a)*rr, cz = 6 + Math.sin(a)*rr;
+    const h = rnd(2.6,3.8);
+    const stem = cyl(.07,.09,h,0x5f8f4a,6); stem.position.set(cx, h/2, cz); world.add(stem);
+    const head = new THREE.Mesh(new THREE.CapsuleGeometry(.17, .7, 3, 8), M(0x7a4a26));
+    head.position.set(cx, h + .3, cz); world.add(head);
+  }
+
+  // сухое дерево
+  const dead = new THREE.Group();
+  const dt2 = reg(cyl(.6,1,10,0x6b6255,7)); dt2.position.y = 5; dt2.rotation.z = .16; dead.add(dt2);
+  [[.9,7,0,.9],[-.7,8.4,.3,-.8],[.4,10,-.6,.5]].forEach(b => {
+    const br = reg(cyl(.2,.4,5,0x6b6255,6), false);
+    br.position.set(b[0], b[1], b[2]); br.rotation.z = b[3]; dead.add(br);
+  });
+  dead.position.set(x - 24, 0, -16); world.add(dead);
+
+  // светлячки
+  for(let i=0;i<14;i++){
+    const f = new THREE.Mesh(new THREE.SphereGeometry(.16, 6, 6),
+      new THREE.MeshBasicMaterial({color:0xfff2a0}));
+    const ox = x + rnd(-24,24), oz = rnd(-14,24), oy = rnd(1.5,7), sp = rnd(.4,1), ph = rnd(0,9);
+    f.position.set(ox, oy, oz); world.add(f);
+    animated.push(t => {
+      f.position.x = ox + Math.sin(t*sp + ph)*3;
+      f.position.z = oz + Math.cos(t*sp*.8 + ph)*3;
+      f.position.y = oy + Math.sin(t*2 + ph)*.7;
+      f.visible = Math.sin(t*5 + ph) > -.6;
+    });
+  }
+
+  // туман над водой
+  for(let i=0;i<4;i++){
+    const mist = new THREE.Mesh(new THREE.PlaneGeometry(46, 22),
+      new THREE.MeshBasicMaterial({color:0xdff2e4, transparent:true, opacity:.14, alphaMap:SOFT, depthWrite:false, side:THREE.DoubleSide}));
+    mist.position.set(x + rnd(-14,14), rnd(2,5), rnd(-4,16));
+    mist.rotation.x = -Math.PI/2.4; world.add(mist);
+    const x0 = mist.position.x, sp = rnd(.5,1.2);
+    animated.push((t,dt) => { mist.position.x += dt*sp; if(mist.position.x > x0+26) mist.position.x = x0-26; });
+  }
+
+  hill(x-46, -44, 26, 0x3a5730, .3); hill(x+44, -46, 28, 0x3f5f33, .3);
+  cloudAt(x, 40, -50, 1.3, .7);
+}
+
+/* ================================================================
+   ЛОКАЦИЯ 5 — ЛУГ У СТАРОГО ДУБА
+   ================================================================ */
+function buildMeadow(){
+  const x = ZONE_X[4];
+  patch(x, 0x8ed14f, 85);
+  patch(x + 8, 0xa3dd63, 45, .07, .9);
+
+  // катящиеся холмы
+  hill(x-40, -52, 34, 0x7cc63f, .26);
+  hill(x+8, -60, 44, 0x8ed14f, .24);
+  hill(x+52, -48, 30, 0x7cc63f, .28);
+  hill(x-70, -30, 20, 0x9ad858, .3);
+  hill(x+70, -22, 18, 0x9ad858, .3);
+
+  // большой дуб с табличкой
+  const oak = new THREE.Group();
+  const trunk = reg(cyl(1.7, 2.6, 13, 0x8a5a30, 10)); trunk.position.y = 6.5; oak.add(trunk);
+  const roots = reg(cyl(3, 4.2, 2, 0x8a5a30, 8)); roots.position.y = 1; oak.add(roots);
+  [[0,15,0,7.4,0x3f9e4d],[-4.5,13,1.5,5,0x4bb05a],[4.6,13.5,-1,5.4,0x379047],[0.5,17.5,3,4.4,0x4bb05a],[0,17,-3.5,4,0x379047]]
+    .forEach(b => {
+      const bl = reg(sph(b[3], b[4], undefined, 14, 10), false);
+      bl.position.set(b[0], b[1], b[2]); oak.add(bl);
+    });
+  oak.position.set(10, 0, -8); oak.scale.setScalar(1.1);
+  oak.position.x += x; world.add(oak);
+  animated.push(t => { oak.rotation.z = Math.sin(t*.4)*.012; });
+
+  // деревянная табличка
+  const signTex = canvasTex((g,w,h) => {
+    g.fillStyle = '#9a6a3a'; g.fillRect(0,0,w,h);
+    g.strokeStyle = '#6e4522'; g.lineWidth = 8; g.strokeRect(4,4,w-8,h-8);
+    g.fillStyle = '#fff6e0'; g.font = 'bold 34px Segoe UI, sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('ФИНИШ!', w/2, h/2);
+  }, 256, 96);
+  const signGrp = new THREE.Group();
+  const board = reg(box(8.4, 3.1, .5, 0x9a6a3a)); signGrp.add(board);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(8, 2.7),
+    new THREE.MeshStandardMaterial({map:signTex, roughness:.85}));
+  face.position.z = .27; signGrp.add(face);
+  [[-3.6,1.6],[3.6,1.6]].forEach(p => { const n = reg(cyl(.16,.16,1.4,0x6e4522,6), false); n.position.set(p[0], p[1]-1.4, 0); signGrp.add(n); });
+  signGrp.position.set(x + 5, 9.4, 3.5); signGrp.rotation.y = .18; world.add(signGrp);
+
+  // второе деревце слева
+  const t2 = new THREE.Group();
+  const tr2 = reg(cyl(.9,1.3,8,0x8a5a30,8)); tr2.position.y = 4; t2.add(tr2);
+  [[0,10,0,4.6],[-2.6,9,1,3.2],[2.6,9.4,-.8,3.4]].forEach(b => {
+    const bl = reg(sph(b[3], 0x4bb05a, undefined, 12, 9), false); bl.position.set(b[0],b[1],b[2]); t2.add(bl);
+  });
+  t2.position.set(x - 46, 0, 6); world.add(t2);
+
+  // кусты, камни, цветы
+  [[-24,-14],[-30,16],[26,18],[34,-12],[-14,26],[18,30]].forEach(p => {
+    const b1 = reg(sph(rnd(2.6,3.8), 0x3f9e4d, undefined, 12, 8), false);
+    b1.scale.y = .75; b1.position.set(x+p[0], 1.5, p[1]); world.add(b1);
+  });
+  rocks(x - 16, 12, 6, 1.7, 0xbdb49a);
+  rocks(x + 22, 8, 5, 1.4, 0xbdb49a);
+  flowerPatch(x - 6, 22, [0xffffff, 0xffd1e8, 0xffd447], 20, 14);
+  flowerPatch(x + 14, 34, [0xffffff, 0xb45dff, 0xff9ad4], 18, 12);
+  flowerPatch(x - 28, -4, [0xffffff, 0xffd447], 16, 10);
+
+  cloudAt(x-40, 40, -46, 1.4, 1.1); cloudAt(x+30, 48, -34, 1.2, .9);
+  cloudAt(x+56, 36, 4, 1, 1.4); cloudAt(x-16, 52, -64, 1.6, .7);
+}
+
+/* ---------------- СБОРКА МИРА ---------------- */
+buildMountains();
+buildIsland();
+buildJungle();
+buildSwamp();
+buildMeadow();
+
+/* ================================================================
+   КАМЕРА: орбита + кинематографичные переходы
+   ================================================================ */
+const cam = {
+  angle: CAM[0].start, radius: CAM[0].r, height: CAM[0].h,
+  center: new THREE.Vector3(ZONE_X[0], CAM[0].look, 0),
+  look: new THREE.Vector3(ZONE_X[0], CAM[0].look, 0),
+  mouse: new THREE.Vector2(0,0), shake:0
+};
+let tween = null;
+
+addEventListener('mousemove', e => {
+  cam.mouse.x = (e.clientX / innerWidth - .5) * 2;
+  cam.mouse.y = (e.clientY / innerHeight - .5) * 2;
+});
+
+function flyTo(levelIdx, onDone){
+  const c0 = cam.center.clone(), l0 = cam.look.clone();
+  const C = CAM[levelIdx];
+  const c1 = new THREE.Vector3(ZONE_X[levelIdx], C.look, 0);
+  const a0 = cam.angle;
+  let a1 = a0 + 2.6;
+  tween = {t:0, dur: AUTOTEST ? .08 : 3.4, c0, c1, l0, l1:c1.clone(), a0, a1, r0:cam.radius, h0:cam.height, r1:C.r, h1:C.h, onDone};
+}
+function easeInOut(k){ return k < .5 ? 4*k*k*k : 1 - Math.pow(-2*k+2, 3)/2; }
+
+function updateCamera(dt){
+  if(tween){
+    tween.t += dt;
+    let k = Math.min(1, tween.t / tween.dur), e = easeInOut(k);
+    const arc = Math.sin(k * Math.PI);
+    cam.angle = tween.a0 + (tween.a1 - tween.a0) * e;
+    cam.radius = tween.r0 + (tween.r1 - tween.r0) * e + arc * 30;
+    cam.height = tween.h0 + (tween.h1 - tween.h0) * e + arc * 26;
+    cam.center.lerpVectors(tween.c0, tween.c1, e);
+    cam.look.lerpVectors(tween.l0, tween.l1, e);
+    if(k >= 1){ const d = tween.onDone; tween = null; if(d) d(); }
+  } else {
+    cam.angle += dt * 0.05;
+  }
+  const cx = cam.center.x + Math.cos(cam.angle) * cam.radius;
+  const cz = cam.center.z + Math.sin(cam.angle) * cam.radius;
+  camera.position.set(cx + cam.mouse.x * 1.6, cam.height + Math.sin(performance.now()*.0006)*.5 - cam.mouse.y * 1.2, cz);
+  camera.lookAt(cam.look);
+}
+
+/* ---------------- АТМОСФЕРА (небо и туман) ---------------- */
+const atmo = {
+  top: new THREE.Color(ATMOS[0].top), bottom: new THREE.Color(ATMOS[0].bottom), fog: new THREE.Color(ATMOS[0].fog),
+  near: ATMOS[0].near, far: ATMOS[0].far
+};
+function updateAtmo(dt, idx){
+  const A = ATMOS[idx], k = Math.min(1, dt * 1.3);
+  atmo.top.lerp(new THREE.Color(A.top), k);
+  atmo.bottom.lerp(new THREE.Color(A.bottom), k);
+  atmo.fog.lerp(new THREE.Color(A.fog), k);
+  atmo.near += (A.near - atmo.near) * k;
+  atmo.far  += (A.far  - atmo.far ) * k;
+  skyU.top.value.copy(atmo.top); skyU.bottom.value.copy(atmo.bottom);
+  scene.fog.color.copy(atmo.fog); scene.fog.near = atmo.near; scene.fog.far = atmo.far;
+  scene.background.copy(atmo.bottom);
+}
+
+/* ---------------- ЦИКЛ РЕНДЕРА ---------------- */
+const clock = new THREE.Clock();
+let ready = false;
+function loop(){
+  if(!AUTOTEST) requestAnimationFrame(loop);
+  if(AUTOTEST || SHOTLEVEL >= 0) window.GAMEFRAMES = (window.GAMEFRAMES || 0) + 1;
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+  for(let i = 0; i < animated.length; i++) animated[i](t, dt);
+  updateCamera(dt);
+  updateAtmo(dt, G.level);
+  sky.position.set(camera.position.x, 0, camera.position.z);
+  const cx = cam.center.x;
+  sun.position.set(cx + 55, 90, 45);
+  sun.target.position.set(cx, 0, 0);
+  sun.target.updateMatrixWorld();
+  if(!AUTOTEST && SHOTLEVEL < 0) renderer.render(scene, camera);}
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight, false);
+});
+if(AUTOTEST || SHOTLEVEL >= 0){ setInterval(loop, 16); } else { loop(); }
+ready = true;
+
+/* ================================================================
+   ИГРОВОЙ ЦИКЛ: вопросы и переходы
+   ================================================================ */
+const LETTERS = ['А','Б','В','Г'];
+let hintUsed = false;
+
+function startGame(){
+  G.level = 0; G.q = 0; G.score = 0; G.levelScore = 0;
+  cam.angle = CAM[0].start; cam.radius = CAM[0].r; cam.height = CAM[0].h;
+  cam.center.set(ZONE_X[0], CAM[0].look, 0); cam.look.copy(cam.center);
+  updateHud(); buildDots();
+  showLevelIntro();
+}
+
+function showLevelIntro(){
+  const L = LEVELS[G.level];
+  G.q = 0; G.levelScore = 0; hintUsed = false;
+  updateHud(); buildDots();
+  panel.classList.add('hidden');
+  showModal(`
+    <span class="bigEmoji">${L.emoji}</span>
+    <h2>${L.name}</h2>
+    <p>${L.intro}</p>
+    <div class="fact" style="text-align:left"><b>💡 Интересный факт этой локации</b>${L.questions[0].f.split('.')[0]}.</div>
+    <button class="btn" id="btnGo">▶ К вопросам</button>
+  `);
+  $('btnGo').onclick = () => { sClick(); hideModal(); showQuestion(); };
+}
+
+function showQuestion(){
+  const L = LEVELS[G.level], Q = L.questions[G.q];
+  G.tried = false;
+  panel.classList.remove('hidden');
+  $('pTag').textContent = L.tag;
+  $('pCount').textContent = `Вопрос ${G.q + 1} из ${L.questions.length}`;
+  $('pQuestion').textContent = Q.q;
+  $('pFeedback').classList.remove('show');
+  $('hintBtn').style.display = hintUsed ? 'none' : 'block';
+  $('hintBtn').disabled = false;
+
+  // прогресс
+  const pr = $('pProgress').children;
+  for(let i = 0; i < 3; i++){ pr[i].className = i < G.q ? 'on' : ''; }
+
+  const wrap = $('pOptions'); wrap.innerHTML = '';
+  Q.a.forEach((text, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.innerHTML = `<span class="letter">${LETTERS[i]}</span><span class="txt">${text}</span>`;
+    b.dataset.i = i;
+    b.onclick = () => answer(i, b);
+    wrap.appendChild(b);
+  });
+}
+
+function answer(i, btn){
+  if(G.locked) return;
+  const Q = LEVELS[G.level].questions[G.q];
+  const opts = [...$('pOptions').children];
+  if(i === Q.c){
+    opts[Q.c].classList.add('correct');
+    opts.forEach(o => o.disabled = true);
+    const gained = G.tried ? 0 : 10;
+    G.score += gained; G.levelScore += gained;
+    G.tried = true;
+    sRight();
+    $('pVerdict').className = 'verdict ok';
+    $('pVerdict').textContent = gained ? '🎉 Отлично! Правильный ответ +10 очков' : '✅ Правильно!';
+  } else {
+    btn.classList.add('wrong');
+    btn.disabled = true;
+    G.tried = true;
+    sWrong();
+    opts[Q.c].classList.add('correct');
+    opts.forEach(o => o.disabled = true);
+    $('pVerdict').className = 'verdict no';
+    $('pVerdict').textContent = '❌ Не угадал. Правильный ответ: ' + LETTERS[Q.c] + ') ' + Q.a[Q.c];
+  }
+  $('pFact').innerHTML = '<b>💡 Запомни факт</b>' + Q.f;
+  $('pFeedback').classList.add('show');
+  $('hintBtn').style.display = 'none';
+  updateHud();
+  const pr = $('pProgress').children;
+  pr[G.q].className = (i === Q.c ? 'ok' : 'bad');
+}
+
+$('pNext').onclick = () => {
+  sClick();
+  G.q++;
+  if(G.q < LEVELS[G.level].questions.length){ showQuestion(); }
+  else { panel.classList.add('hidden'); levelComplete(); }
+};
+
+$('hintBtn').onclick = () => {
+  if(hintUsed) return;
+  hintUsed = true;
+  sClick();
+  const Q = LEVELS[G.level].questions[G.q];
+  const wrong = [0,1,2,3].filter(i => i !== Q.c).sort(() => Math.random() - .5).slice(0, 2);
+  [...$('pOptions').children].forEach((b, i) => { if(wrong.includes(i)) b.classList.add('hide'); });
+  $('hintBtn').style.display = 'none';
+};
+
+function levelComplete(){
+  const L = LEVELS[G.level];
+  sWin();
+  const last = G.level === LEVELS.length - 1;
+  showModal(`
+    <span class="bigEmoji">${L.emoji}✅</span>
+    <h2>Локация пройдена!</h2>
+    <div class="scoreLine">${G.levelScore} из 30 очков на этом уровне · всего ${G.score}</div>
+    <p>Ты узнал:</p>
+    <div class="chips">${L.shortFacts.map(f => `<span class="chip">💡 ${f}</span>`).join('')}</div>
+    ${last
+      ? `<button class="btn amber" id="btnFinish">🏆 Завершить квест</button>`
+      : `<button class="btn" id="btnFly">🚀 Лететь дальше ➜</button>`}
+  `);
+  const b = $('btnFly') || $('btnFinish');
+  b.onclick = () => {
+    sClick();
+    if(last){ endGame(); return; }
+    const next = G.level + 1;
+    showModal(`<div class="loader"></div><h2>Летим к следующей локации…</h2>
+      <p>${LEVELS[next].emoji} ${LEVELS[next].name}</p>`);
+    G.level = next;
+    updateHud(); buildDots();
+    flyTo(next, () => { hideModal(); showLevelIntro(); });
+  };
+}
+
+function endGame(){
+  const s = G.score;
+  let rank, emoji;
+  if(s >= 140){ rank = 'Мастер географии'; emoji = '🏆'; }
+  else if(s >= 110){ rank = 'Юный исследователь'; emoji = '🧭'; }
+  else if(s >= 80){ rank = 'Путешественник'; emoji = '🎒'; }
+  else { rank = 'Новичок картографа'; emoji = '🗺️'; }
+  const facts = LEVELS.flatMap(L => L.shortFacts);
+  showModal(`
+    <span class="bigEmoji">${emoji}</span>
+    <h1>Квест завершён!</h1>
+    <div class="rank">${rank}</div>
+    <div class="scoreLine">${s} из 150 очков</div>
+    <p>Пройдено 5 локаций · собрано 15 интересных фактов</p>
+    <div class="chips">${facts.map(f => `<span class="chip">💡 ${f}</span>`).join('')}</div>
+    <button class="btn green" id="btnAgain">🔄 Играть снова</button>
+  `);
+  $('btnAgain').onclick = () => { sClick(); startGame(); };
+}
+
+/* ---------------- СТАРТОВЫЙ ЭКРАН ---------------- */
+showModal(`
+  <span class="bigEmoji">🌍</span>
+  <h1>ГЕО-КВЕСТ 3D</h1>
+  <p>Пятиэтапное путешествие по планете в формате 3D-квеста:<br>
+  горы → пиратский остров → тропические джунгли → болото → луг.</p>
+  <div class="howto">
+    <div><b>🧭</b>Пройди 5 локаций — по 3 вопроса на каждой</div>
+    <div><b>💡</b>После каждого ответа открывается интересный факт</div>
+    <div><b>⭐</b>10 очков за верный ответ с первой попытки (максимум 150)</div>
+  </div>
+  <button class="btn green" id="btnStart" style="font-size:19px; padding:15px 34px">▶ Начать путешествие</button>
+`);
+$('btnStart').onclick = () => { sClick(); startGame(); };
+updateHud(); buildDots();
+
+/* ---------- СКРЫТЫЙ АВТОТЕСТ (?autotest=1, ?shot=N) — проверка игры ---------- */
+if (AUTOTEST || SHOTLEVEL >= 0){
+  const errs = [];
+  addEventListener('error', e => errs.push(e.message));
+  let steps = 0, done = false, frames = 0;
+  (function cnt(){ frames++; requestAnimationFrame(cnt); })();
+  const iv = setInterval(() => {
+    steps++;
+    const el = id => document.getElementById(id);
+    document.title = 'T' + steps + ' L' + G.level + ' Q' + G.q + ' F' + (window.GAMEFRAMES || frames) +
+      ' M' + (modal.classList.contains('hidden') ? 0 : 1) +
+      ' B' + (el('btnFly') ? 1 : 0) + (el('btnGo') ? 1 : 0) + (el('btnFinish') ? 1 : 0) +
+      (done ? ' DONE' + G.score : '') + (errs.length ? ' E' + errs.join('~') : '');
+    if (!done && el('btnAgain')){
+      done = true;
+      const d = document.createElement('div');
+      d.id = 'testResult';
+      d.textContent = 'TESTDONE score=' + G.score + ' level=' + G.level +
+        ' questions=' + G.q + ' err=' + (errs.length ? errs.join(' | ') : 'none');
+      document.body.appendChild(d);
+      clearInterval(iv); return;
+    }
+    if (steps > 800){
+      const d = document.createElement('div');
+      d.id = 'testResult';
+      d.textContent = 'TESTTIMEOUT score=' + G.score + ' level=' + G.level + ' q=' + G.q +
+        ' err=' + (errs.length ? errs.join(' | ') : 'none');
+      document.body.appendChild(d);
+      clearInterval(iv); return;
+    }
+    if (!modal.classList.contains('hidden')){
+      if (SHOTLEVEL >= 0 && G.level === SHOTLEVEL && el('btnGo')){
+        hideModal(); panel.classList.add('hidden');
+        clearInterval(iv);
+        setTimeout(() => {
+          renderer.setSize(1200, 750, false);
+          renderer.render(scene, camera);
+          const holder = document.createElement('div');
+          holder.id = 'shotData';
+          try { holder.textContent = renderer.domElement.toDataURL('image/png'); }
+          catch(e){ holder.textContent = 'SHOTERR ' + e.message; }
+          document.body.appendChild(holder);
+          document.title = 'SHOTREADY L' + SHOTLEVEL;
+        }, 1500);
+        return;
+      }
+      const b = el('btnStart') || el('btnGo') || el('btnFly') || el('btnFinish');
+      if (b) b.click();
+      return;
+    }
+    if (el('pFeedback').classList.contains('show')){ el('pNext').click(); return; }
+    const Q = LEVELS[G.level].questions[G.q];
+    if (WRONGMODE){
+      if (G.q === 0 && !hintUsed && el('hintBtn') && el('hintBtn').style.display !== 'none'){ el('hintBtn').click(); return; }
+      const kids = [...$('pOptions').children];
+      const bad = kids.find((b, i) => i !== Q.c && !b.classList.contains('hide'));
+      if (bad) bad.click();
+      return;
+    }
+    const opt = $('pOptions').children[Q.c];
+    if (opt) opt.click();
+  }, 60);
+}
+}
+</script>
+</body>
+</html>
