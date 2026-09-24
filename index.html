@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ГЕО-КВЕСТ 3D — путешествие по планете</title>
+<title>ГЕО-КВЕСТ — путешествие по планете</title>
 <style>
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{width:100%; height:100%; overflow:hidden; font-family:"Segoe UI", system-ui, -apple-system, sans-serif; background:#0c1b2a; color:#17303f;}
@@ -30,11 +30,12 @@
   .dot.done{background:#8ee08a; border-color:#3fb54a;}
 
   /* ---------- Вопросы ---------- */
-  #panel{position:fixed; right:18px; top:50%; transform:translateY(-50%); width:430px; max-width:calc(100vw - 32px);
+  #panel{position:fixed; left:calc(100vw - 454px); top:110px; width:430px; max-width:calc(100vw - 32px);
     z-index:25; background:linear-gradient(160deg,rgba(255,255,255,.96),rgba(238,247,255,.96));
     border:3px solid #ffffff; border-radius:24px; padding:18px 20px 20px;
-    box-shadow:0 18px 50px rgba(0,25,50,.3); transition:opacity .3s, transform .3s;}
-  #panel.hidden{opacity:0; pointer-events:none; transform:translateY(-50%) translateX(40px);}
+    box-shadow:0 18px 50px rgba(0,25,50,.3);
+    transition:opacity .3s, transform .3s;}
+  #panel.hidden{opacity:0; pointer-events:none; transform:translateX(34px) scale(.97);}
   .panelHead{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
   .badge{background:linear-gradient(90deg,#0e9ae0,#39c2f0); color:#fff; font-size:12px; font-weight:800;
     padding:5px 12px; border-radius:999px; letter-spacing:.4px; text-transform:uppercase;}
@@ -77,9 +78,9 @@
 
   /* ---------- Модальные экраны ---------- */
   #modal{position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center;
-    background:rgba(6,22,36,.55); backdrop-filter:blur(5px); padding:20px; transition:opacity .3s;}
+    background:rgba(6,22,36,.45); padding:20px; transition:opacity .3s;}
   #modal.hidden{opacity:0; pointer-events:none;}
-  .card{width:min(620px,100%); max-height:90vh; overflow:auto; background:linear-gradient(165deg,#ffffff,#eef8ff);
+  .card{width:min(620px,100%); max-height:84vh; overflow:auto; background:linear-gradient(165deg,#ffffff,#eef8ff);
     border:4px solid #fff; border-radius:28px; padding:30px 32px; text-align:center;
     box-shadow:0 24px 70px rgba(0,15,35,.5); animation:pop .35s ease;}
   .card h1{font-size:34px; margin-bottom:6px; color:#0c4c6e; letter-spacing:.5px;}
@@ -95,18 +96,33 @@
     padding:5px 11px; border-radius:999px;}
   .scoreLine{font-size:20px; font-weight:800; color:#e08000; margin:6px 0 4px;}
   .rank{font-size:26px; font-weight:900; color:#0c4c6e; margin:8px 0 4px;}
-  .loader{width:56px; height:56px; margin:6px auto 16px; border-radius:50%;
-    border:7px solid #d7ecfa; border-top-color:#0e9ae0; animation:spin 1s linear infinite;}
-  @keyframes spin{to{transform:rotate(360deg);}}
   @keyframes pop{from{opacity:0; transform:scale(.93) translateY(12px);} to{opacity:1; transform:none;}}
+
+  /* ---------- Надпись внизу на главных экранах ---------- */
+  #footer{position:fixed; left:0; right:0; bottom:16px; z-index:45; text-align:center; padding:0 20px;
+    font-size:15px; font-weight:800; letter-spacing:.3px; color:#eaf6ff; pointer-events:none;
+    text-shadow:0 2px 10px rgba(0,15,35,.85), 0 1px 3px rgba(0,15,35,.9);
+    opacity:0; transform:translateY(14px); transition:opacity .45s, transform .45s;}
+  #footer.show{opacity:1; transform:none;}
+
+  /* ---------- Баннер перелёта (без затемнения и загрузки) ---------- */
+  #flyBanner{position:fixed; top:112px; left:50%; z-index:30; max-width:calc(100vw - 32px);
+    transform:translateX(-50%) translateY(-16px); opacity:0; pointer-events:none;
+    background:rgba(255,255,255,.94); border:2px solid #fff; border-radius:999px; padding:9px 22px;
+    font-size:15px; font-weight:800; color:#1c4157; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    box-shadow:0 8px 24px rgba(0,20,40,.28); transition:opacity .4s, transform .4s;}
+  #flyBanner.show{opacity:1; transform:translateX(-50%) translateY(0);}
 
   #loadErr{position:fixed; inset:0; z-index:99; display:none; align-items:center; justify-content:center;
     background:#0c1b2a; color:#cfe8f7; text-align:center; padding:30px; font-size:17px; line-height:1.6;}
 
   @media (max-width:820px){
-    #panel{right:8px; left:8px; width:auto; top:auto; bottom:8px; transform:none; max-height:56vh; overflow:auto;}
+    #panel{left:8px !important; right:8px; top:auto !important; bottom:8px; width:auto; transform:none;
+      max-height:56vh; overflow:auto;}
     #panel.hidden{transform:translateY(40px);}
     #dots{top:56px;}
+    #footer{font-size:13px; bottom:10px;}
+    #flyBanner{top:100px; font-size:13.5px; padding:7px 16px;}
     .card{padding:22px 18px;}
     .card h1{font-size:26px;}
     .howto div{width:135px; font-size:12px;}
@@ -118,19 +134,23 @@
 <canvas id="scene"></canvas>
 
 <div id="hud">
-  <div class="hudBox logo">🌍 ГЕО-<span>КВЕСТ</span> 3D</div>
+  <div class="hudBox logo">🌍 ГЕО-<span>КВЕСТ</span></div>
   <div class="hudBox" id="hudLevel">Локация не выбрана</div>
   <div class="hudBox" id="hudScore">⭐ <b id="scoreVal">0</b> очков</div>
 </div>
 
 <div id="dots"></div>
 
+<div id="flyBanner">🚀 Летим к следующей локации…</div>
+
+<div id="footer">🌍 ГЕО-квест · 5 локаций · 25 вопросов · узнай, как устроена наша планета</div>
+
 <div id="panel" class="hidden">
   <div class="panelHead">
     <span class="badge" id="pTag">Локация</span>
-    <span class="qCount" id="pCount">Вопрос 1 из 3</span>
+    <span class="qCount" id="pCount">Вопрос 1 из 5</span>
   </div>
-  <div class="qProgress" id="pProgress"><i></i><i></i><i></i></div>
+  <div class="qProgress" id="pProgress"><i></i><i></i><i></i><i></i><i></i></div>
   <div id="pQuestion">…</div>
   <div id="pOptions"></div>
   <div id="pFeedback">
@@ -156,11 +176,12 @@ if (typeof THREE === 'undefined') {
   setTimeout(() => { if (typeof THREE === 'undefined') {
     document.getElementById('loadErr').style.display = 'flex';
     document.getElementById('modal').classList.add('hidden');
+    document.getElementById('footer').classList.remove('show');
   }}, 4000);
 } else {
 /* ================================================================
-   ГЕО-КВЕСТ 3D — квест-игра по географии (1–7 классы)
-   5 локаций по картинкам × 3 вопроса + интересные факты
+   ГЕО-КВЕСТ — квест-игра по географии (1–7 классы)
+   5 локаций по картинкам × 5 вопросов + интересные факты
    ================================================================ */
 
 /* ---------------- ДАННЫЕ ИГРЫ ---------------- */
@@ -168,81 +189,136 @@ const LEVELS = [
  {
   name:"Горная долина", emoji:"⛰️", tag:"Локация 1 · Горы и озеро",
   intro:"Ты стоишь на берегу ледяного озера среди заснеженных вершин. Река несётся в долину, а с утёса рушится водопад. Прежде чем тропа приведёт тебя дальше — покажи, что ты знаешь горы!",
-  shortFacts:["Эверест — 8848 м","Байкал — 1642 м","Водопад Анхель — 979 м"],
+  shortFacts:["Эверест — 8848 м","Байкал — 1642 м","Водопад Анхель — 979 м","Нил — 6850 км","Джомолунгма в Гималаях"],
   questions:[
    { q:"Какая самая высокая гора на Земле?",
      a:["Эльбрус — 5642 м","Джомолунгма (Эверест) — 8848 м","Килиманджаро — 5895 м","Монблан — 4808 м"], c:1,
-     f:"Джомолунгма (Эверест) — 8848,86 м! Причём гора всё ещё растёт: тектонические плиты поднимают её примерно на 4 мм в год. А всего 100 м подъёма — и температура падает почти на 0,6 °C."},
+     f:"Джомолунгма (Эверест) — 8848,86 м! Причём гора всё ещё растёт: тектонические плиты поднимают её примерно на 4 мм в год. А всего 100 м подъёма — и температура падает почти на 0,6 °C.",
+     focus:{t:[0,32,-58], a:90, d:62, h:34}},
    { q:"Какое самое глубокое озеро планеты?",
      a:["Танганьика","Байкал","Ладожское","Каспийское"], c:1,
-     f:"Байкал — 1642 м глубины. В нём хранится около 20 % всей пресной воды Земли, а живут здесь более 2500 видов животных и растений — почти все нигде больше не встречаются!"},
+     f:"Байкал — 1642 м глубины. В нём хранится около 20 % всей пресной воды Земли, а живут здесь более 2500 видов животных и растений — почти все нигде больше не встречаются!",
+     focus:{t:[8,1,8], a:100, d:36, h:22}},
    { q:"Какой водопад самый высокий в мире?",
      a:["Ниагарский","Виктория","Анхель (Венесуэла)","Игуасу"], c:2,
-     f:"Водопад Анхель — 979 метров! Вода падает с вершины столообразной горы Ауянтепуй и почти не долетает до земли: её разносит ветер в виде мелкого тумана."}
+     f:"Водопад Анхель — 979 метров! Вода падает с вершины столообразной горы Ауянтепуй и почти не долетает до земли: её разносит ветер в виде мелкого тумана.",
+     focus:{t:[36,9,-3], a:90, d:34, h:18}},
+   { q:"Какая самая длинная река на Земле?",
+     a:["Амазонка","Нил","Янцзы","Миссисипи"], c:1,
+     f:"По классическим измерениям Нил длиннее всех — 6850 км (Амазонке отдают 6992 км, но она считается самой полноводной). Каждую секунду Нил выносит в Средиземное море около 2500 м³ воды.",
+     focus:{t:[8,1,46], a:90, d:32, h:20}},
+   { q:"В каком горном массиве находится Джомолунгма?",
+     a:["Альпы","Кавказ","Гималаи","Кордильеры"], c:2,
+     f:"Джомолунгма стоит в Гималаях, в хребте Махалангур-Химал, на границе Непала и Китая. Гималаи выросли из-за столкновения индостанской плиты с евразийской — и они продолжают подниматься!",
+     focus:{t:[-20,30,-56], a:135, d:70, h:38}}
   ]
  },
  {
   name:"Пиратский остров", emoji:"🏴‍☠️", tag:"Локация 2 · Остров и море",
-  intro:"«Полный вперёд!» Корабль причалил к необитаемому острову с пальмами и каменной аркой. На песке — открытый сундук с золотом… Но карта дальше лежит только у того, кто ответит на 3 вопроса!",
-  shortFacts:["Гренландия — самый большой остров","Саргассово море — без берегов","Большой Барьерный риф виден из космоса"],
+  intro:"«Полный вперёд!» Корабль причалил к необитаемому острову с пальмами и каменной аркой. На песке — открытый сундук с золотом… Но карта дальше лежит только у того, кто ответит на 5 вопросов!",
+  shortFacts:["Гренландия — 2 166 086 км²","Саргассово море — без берегов","Риф тянется на 2300 км","Архипелаг — группа островов","Тихий океан — самый большой"],
   questions:[
    { q:"Какой остров самый большой в мире?",
      a:["Мадагаскар","Гренландия","Новая Зеландия","Великобритания"], c:1,
-     f:"Гренландия — 2 166 086 км², это как 3 Украины или вся Индия! 80 % острова скрыто подо льдом толщиной до 3 км, а название переводится как «зелёная страна» — викинги назвали её так, чтобы заманить сюда поселенцев."},
+     f:"Гренландия — 2 166 086 км², это как 3 Украины или вся Индия! 80 % острова скрыто подо льдом толщиной до 3 км, а название переводится как «зелёная страна» — викинги назвали её так, чтобы заманить сюда поселенцев.",
+     focus:{t:[150,1,2], a:90, d:48, h:24}},
    { q:"Единственное в мире море без берегов, где плавают водорослевые «плоты»?",
      a:["Саргассово море","Мраморное море","Красное море","Балтийское море"], c:0,
-     f:"Саргассово море ограничено не берегами, а только течениями. Древние мореплаватели боялись его: корабли, попав в густые саргассовые водоросли, будто застревали и не могли двигаться."},
+     f:"Саргассово море ограничено не берегами, а только течениями. Древние мореплаватели боялись его: корабли, попав в густые саргассовые водоросли, будто застревали и не могли двигаться.",
+     focus:{t:[112,0,-22], a:35, d:45, h:22}},
    { q:"Самый большой коралловый риф планеты находится у берегов…",
      a:["Египта","Бали","Австралии","Мадагаскара"], c:2,
-     f:"Большой Барьерный риф у Австралии тянется на 2300 км — его видно даже из космоса! Это самый большой живой организм на Земле: дом для 1500 видов рыб и 400 видов кораллов."}
+     f:"Большой Барьерный риф у Австралии тянется на 2300 км — его видно даже из космоса! Это самый большой живой организм на Земле: дом для 1500 видов рыб и 400 видов кораллов.",
+     focus:{t:[178,0,26], a:-100, d:36, h:20}},
+   { q:"Как называется группа островов, расположенных рядом?",
+     a:["Архипелаг","Полуостров","Пролив","Берег"], c:0,
+     f:"Архипелаг — «начало моря». Крупнейший в мире — Индонезия: около 17 000 островов! А Япония — 6852 острова, и их число растёт: вулканы добавляют новые.",
+     focus:{t:[154,4,-12], a:250, d:26, h:14}},
+   { q:"Какой океан самый большой по площади?",
+     a:["Атлантический","Индийский","Тихий","Северный Ледовитый"], c:2,
+     f:"Тихий океан занимает 178 млн км² — это больше площади всех материков вместе взятых! В нём самая глубокая Марианская впадина — 11 034 м, а островов здесь больше, чем в других океанах суммарно.",
+     focus:{t:[179,5,15], a:45, d:40, h:22}}
   ]
  },
  {
   name:"Тропический лес", emoji:"🌴", tag:"Локация 3 · Джунгли",
-  intro:"Воздух влажный и горячий, вокруг пальмы, орхидеи и крики попугаев. Тропа уходит вглубь зелёного мира. За тремя ответами — выход к следующей локации!",
-  shortFacts:["Амазония — 60 % тропических лесов","Амазонка несёт 20 % речной воды","У экватора день = ночь"],
+  intro:"Воздух влажный и горячий, вокруг пальмы, орхидеи и крики попугаев. Тропа уходит вглубь зелёного мира, а в стороне журчит речушка. За пятью ответами — выход к следующей локации!",
+  shortFacts:["Амазония — 5,5 млн км²","Амазонка — самая полноводная","У экватора день = ночь","Полог леса — верхний ярус","Эпифиты растут на деревьях"],
   questions:[
    { q:"Где находится самый большой тропический лес планеты?",
      a:["В Африке","В Южной Америке, в бассейне Амазонки","В Австралии","В Индии"], c:1,
-     f:"Амазонский лес — 5,5 млн км², это 60 % всех тропических лесов Земли. Его называют «лёгкими планеты»: деревья вырабатывают около 20 % кислорода, который мы вдыхаем."},
+     f:"Амазонский лес — 5,5 млн км², это 60 % всех тропических лесов Земли. Его называют «лёгкими планеты»: деревья вырабатывают около 20 % кислорода, который мы вдыхаем.",
+     focus:{t:[274,9,20], a:110, d:38, h:22}},
    { q:"Какая река несёт к океану больше всех воды в мире?",
      a:["Нил","Амазонка","Янцзы","Волга"], c:1,
-     f:"Амазонка уступает Нилу лишь в длине (6992 км против 6850), но по водности — рекордсмен: каждую секунду она выносит около 200 000 м³ воды — это примерно пятая часть всей речной воды планеты."},
+     f:"Амазонка уступает Нилу лишь в длине (6992 км против 6850), но по водности — рекордсмен: каждую секунду она выносит около 200 000 м³ воды — это примерно пятая часть всей речной воды планеты.",
+     focus:{t:[256,1,25], a:110, d:36, h:24}},
    { q:"Какой климат у экватора?",
      a:["Холодный полярный","Жаркий и влажный круглый год","Сухой пустынный","Умеренный, четыре сезона"], c:1,
-     f:"У экватора солнце почти всегда высоко, поэтому +25…+30 °C и ливни почти каждый день. А ещё здесь идеальный «распорядок»: день и ночь длятся поровну — по 12 часов."}
+     f:"У экватора солнце почти всегда высоко, поэтому +25…+30 °C и ливни почти каждый день. А ещё здесь идеальный «распорядок»: день и ночь длятся поровну — по 12 часов.",
+     focus:{t:[345,8,-50], a:135, d:60, h:30}},
+   { q:"Как называется верхний, самый светлый ярус тропического леса?",
+     a:["Подлесок","Полог (крона)","Моховой покров","Корневая система"], c:1,
+     f:"Полог леса — «крыша» джунглей на высоте 30–60 м. Здесь живут обезьяны, попугаи и ягуары, а до самой земли долетает всего около 2 % солнечного света.",
+     focus:{t:[330,12,0], a:170, d:34, h:20}},
+   { q:"Как называют растения, которые растут не на земле, а на стволах деревьев (орхидеи, папоротники)?",
+     a:["Паразиты","Эпифиты","Суккуленты","Водоросли"], c:1,
+     f:"Эпифиты не питаются своим «хозяином» — они берут влагу прямо из воздуха. В одной Амазонии растёт около 30 000 видов орхидей, и почти все они — эпифиты.",
+     focus:{t:[320,1,8], a:100, d:26, h:13}}
   ]
  },
  {
   name:"Болото", emoji:"🐸", tag:"Локация 4 · Болото",
   intro:"Тропа уходит под воду: кувшинки, камыш, старые поваленные деревья и тихая зелёная гладь. Здесь легко заблудиться… Если знаешь факты о болотах — тебя не поймать!",
-  shortFacts:["Васюганское болото — №1 в мире","Болота поглощают CO₂","Торф — порода из растений"],
+  shortFacts:["Васюганское — 53 000 км²","Болота поглощают CO₂","Торф — порода из растений","Болото — дом лягушек и птиц","Болотный газ — метан"],
   questions:[
    { q:"Какое самое большое болото в мире?",
      a:["Васюганское в Западной Сибири","Припятское в Беларуси","Болота Амазонии","Болота Сенегала"], c:0,
-     f:"Васюганское болото — около 53 000 км², это как небольшая страна! Оно образовалось около 10 000 лет назад на месте отступления ледника и хранит миллиарды тонн торфа."},
+     f:"Васюганское болото — около 53 000 км², это как небольшая страна! Оно образовалось около 10 000 лет назад на месте отступления ледника и хранит миллиарды тонн торфа.",
+     focus:{t:[450,2,6], a:90, d:50, h:26}},
    { q:"Что болото делает с воздухом?",
      a:["Очищает его и поглощает углекислый газ","Делает его сухим","Ничего не делает","Выделяет песок"], c:0,
-     f:"Болота — «фильтры» планеты: они очищают воду, поглощают углекислый газ и служат домом для птиц. По болотным озёрам каждую ось миллионы перелётных птиц выбирают место для отдыха."},
+     f:"Болота — «фильтры» планеты: они очищают воду, поглощают углекислый газ и служат домом для птиц. По болотным озёрам каждую ось миллионы перелётных птиц выбирают место для отдыха.",
+     focus:{t:[426,3,-4], a:200, d:32, h:16}},
    { q:"Что такое торф?",
      a:["Разновидность алмаза","Порода из не до конца перепревших растений","Жидкая нефть","Вулканическая зола"], c:1,
-     f:"Торф — это мхи и травы, которые тысячелетиями копились в воде и не успели перепреть. Он горит, а из него делают удобрения и лекарства. Запасы торфа в России — одни из крупнейших в мире."}
+     f:"Торф — это мхи и травы, которые тысячелетиями копились в воде и не успели перепреть. Он горит, а из него делают удобрения и лекарства. Запасы торфа в России — одни из крупнейших в мире.",
+     focus:{t:[444,1.5,8], a:90, d:26, h:13}},
+   { q:"Какое животное чаще всего встречается на болоте?",
+     a:["Кенгуру","Болотная лягушка","Полярный медведь","Верблюд"], c:1,
+     f:"Озёрная лягушка вырастает до 12 см и откладывает икру сотнями — за лето из одной кладки появляется до 1000 головастиков. А ещё болото — родина жаб, ужей и ондатр.",
+     focus:{t:[456,0.5,14], a:45, d:24, h:13}},
+   { q:"Как называется газ, который выделяется из торфа и иногда загорается над болотом?",
+     a:["Болотный газ (метан)","Кислород","Азот","Водород"], c:0,
+     f:"Болотный газ (метан) образуется из остатков растений без доступа кислорода. Легенды о болотных огнях появились не случайно: учёный Линней однажды «поджёг» болото, ударив по газу палкой!",
+     focus:{t:[426,6,-16], a:270, d:32, h:16}}
   ]
  },
  {
   name:"Луг у старого дуба", emoji:"🌼", tag:"Локация 5 · Луг и равнина",
-  intro:"Наконец-то суша! Зелёные холмы, цветы и большой дуб с деревянной табличкой. Это последняя локация: три вопроса — и квест завершён!",
-  shortFacts:["Русская равнина — 4 млн км²","Устье Волги — дельта 32 000 км²","Плато — «стол» со склонами"],
+  intro:"Наконец-то суша! Зелёные холмы, цветы, речушка и большой дуб с деревянной табличкой. Это последняя локация: пять вопросов — и квест завершён!",
+  shortFacts:["Восточно-Европейская равнина — 4 млн км²","Волга — 3530 км","Устье Волги — дельта 32 000 км²","Плато — «стол» со склонами","Чернозём — богатейшая почва"],
   questions:[
    { q:"Какая самая большая равнина России?",
      a:["Восточно-Европейская (Русская)","Западно-Сибирская","Туранская","Прикаспийская"], c:0,
-     f:"Восточно-Европейская равнина — около 4 млн км²! Почти вся Россия к западу от Урала лежит на ней: это леса, реки, озёра и плодородные чернозёмы."},
+     f:"Восточно-Европейская равнина — около 4 млн км²! Почти вся Россия к западу от Урала лежит на ней: это леса, реки, озёра и плодородные чернозёмы.",
+     focus:{t:[600,6,-40], a:110, d:62, h:30}},
    { q:"Как называется место, где река впадает в море или озеро?",
      a:["Исток","Устье","Приток","Порог"], c:1,
-     f:"Устье — это «рот» реки. У Волги, самой длинной реки России (3530 км), устье образует дельту площадью около 32 000 км², где река разбивается на сотни рукавов и протоков."},
+     f:"Устье — это «рот» реки. У Волги, самой длинной реки России (3530 км), устье образует дельту площадью около 32 000 км², где река разбивается на сотни рукавов и протоков.",
+     focus:{t:[600,1,54], a:90, d:34, h:18}},
    { q:"Как называется плоская возвышенность с крутыми склонами?",
      a:["Холм","Плато","Долина","Низина"], c:1,
-     f:"Плато в переводе — «стол»: ровная поверхность стоит на крутых склонах. Например, Декканское плато в Индии, а на Гвианском плато в Южной Америке находится водопад Анхель — самый высокий на Земле!"}
+     f:"Плато в переводе — «стол»: ровная поверхность стоит на крутых склонах. Например, Декканское плато в Индии, а на Гвианском плато в Южной Америке находится водопад Анхель — самый высокий на Земле!",
+     focus:{t:[608,7,-58], a:60, d:54, h:26}},
+   { q:"Как называется место, где река берёт своё начало?",
+     a:["Устье","Исток","Приток","Порог"], c:1,
+     f:"Волга берёт начало на Валдайской возвышенности — из маленького родника в деревне Волговерховье. Оттуда до Каспийского моря она проходит 3530 км и принимает более 250 притоков.",
+     focus:{t:[548,1,54], a:90, d:30, h:15}},
+   { q:"Какая почва считается самой плодородной в России?",
+     a:["Песчаная","Чернозём","Торфяная","Глинистая"], c:1,
+     f:"Чернозёмы тянутся широкой полосой от Украины до Сибири. Слой чернозёма доходит до 1,5 м, в нём до 10 % органических веществ — в пять раз больше, чем в обычной почве.",
+     focus:{t:[594,0.6,22], a:110, d:24, h:12}}
   ]
  }
 ];
@@ -282,8 +358,8 @@ function buildDots(){
     s.textContent = L.emoji; d.appendChild(s);
   });
 }
-function showModal(html){ modalCard.innerHTML = html; modal.classList.remove('hidden'); }
-function hideModal(){ modal.classList.add('hidden'); }
+function showModal(html){ modalCard.innerHTML = html; modal.classList.remove('hidden'); $('footer').classList.add('show'); }
+function hideModal(){ modal.classList.add('hidden'); $('footer').classList.remove('show'); }
 
 /* ---------------- ЗВУКИ ---------------- */
 let actx = null;
@@ -394,6 +470,15 @@ function water(x, z, r, color, opacity=.88, y=.12){
   m.rotation.x = -Math.PI/2; m.position.set(x, y, z);
   scene.add(m);
   animated.push(t => { m.position.y = y + Math.sin(t*1.2 + x)*0.035; });
+  return m;
+}
+/* прямая речка — для вопросов про реки (джунгли и луг) */
+function riverPlane(w, len, x, z){
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, len),
+    new THREE.MeshStandardMaterial({color:0x4cc3ec, roughness:.15, metalness:.2, transparent:true, opacity:.9, alphaMap:SOFT}));
+  m.rotation.x = -Math.PI/2; m.position.set(x, .12, z); m.receiveShadow = true; world.add(m);
+  const y0 = .12;
+  animated.push(t => { m.position.y = y0 + Math.sin(t*1.1 + x*.1)*.03; });
   return m;
 }
 function canvasTex(draw, w=128, h=128){
@@ -617,6 +702,11 @@ function buildJungle(){
     t.receiveShadow = true; world.add(t);
   }
 
+  // речушка слева от тропы
+  riverPlane(10, 80, x - 44, 20);
+  rocks(x - 52, 8, 5, 1.5, 0x9aa8a0);
+  rocks(x - 38, 48, 4, 1.3, 0x9aa8a0);
+
   // тропические деревья и пальмы вдоль тропы
   const treeSpots = [[-26,20],[-20,-6],[-30,-30],[24,26],[30,0],[22,-24],[-12,44],[16,46],[36,-44],[-34,44]];
   treeSpots.forEach((p,i) => {
@@ -769,6 +859,11 @@ function buildMeadow(){
   hill(x-70, -30, 20, 0x9ad858, .3);
   hill(x+70, -22, 18, 0x9ad858, .3);
 
+  // речушка поперёк луга
+  riverPlane(14, 140, x, 54);
+  rocks(x - 42, 62, 5, 1.6, 0xbdb49a);
+  rocks(x + 40, 44, 4, 1.3, 0xbdb49a);
+
   // большой дуб с табличкой
   const oak = new THREE.Group();
   const trunk = reg(cyl(1.7, 2.6, 13, 0x8a5a30, 10)); trunk.position.y = 6.5; oak.add(trunk);
@@ -837,12 +932,45 @@ const cam = {
   look: new THREE.Vector3(ZONE_X[0], CAM[0].look, 0),
   mouse: new THREE.Vector2(0,0), shake:0
 };
-let tween = null;
+let tween = null;   // кинематографичный перелёт между локациями (орбита)
+let focus = null;   // {t:Vector3, a:рад, d, h} — камера прибита к объекту вопроса
+let focusT = null;  // плавный переход к объекту / возврат на орбиту
+let camMode = 'orbit';
+let rawPos = camera.position.clone(), rawLook = cam.look.clone();
 
 addEventListener('mousemove', e => {
   cam.mouse.x = (e.clientX / innerWidth - .5) * 2;
   cam.mouse.y = (e.clientY / innerHeight - .5) * 2;
 });
+
+/* --- поза орбиты (обычный облёт локации) --- */
+function poseOrbit(){
+  const cx = cam.center.x + Math.cos(cam.angle) * cam.radius;
+  const cz = cam.center.z + Math.sin(cam.angle) * cam.radius;
+  return { p:new THREE.Vector3(cx, cam.height, cz), l:cam.look.clone() };
+}
+/* --- поза «зума» на объект вопроса: камера смотрит на цель --- */
+function poseFocus(time){
+  const a = focus.a + Math.sin(time * .22) * .05;
+  const p = new THREE.Vector3(
+    focus.t.x + Math.cos(a) * focus.d,
+    focus.h + Math.sin(time * .6) * .35,
+    focus.t.z + Math.sin(a) * focus.d
+  );
+  return { p, l:focus.t.clone() };
+}
+/* --- камера подъезжает к объекту текущего вопроса --- */
+function setFocus(f){
+  focus = { t:new THREE.Vector3(f.t[0], f.t[1], f.t[2]), a:f.a * Math.PI/180, d:f.d, h:f.h };
+  camMode = 'focus';
+  focusT = { t:0, dur: AUTOTEST ? .1 : 1.15, p0:rawPos.clone(), l0:rawLook.clone() };
+}
+/* --- возврат к спокойной орбите (интро локации, завершение) --- */
+function releaseFocus(){
+  if(camMode !== 'focus') return;
+  camMode = 'orbit'; focus = null;
+  focusT = { t:0, dur: AUTOTEST ? .1 : 1.3, p0:rawPos.clone(), l0:rawLook.clone() };
+}
 
 function flyTo(levelIdx, onDone){
   const c0 = cam.center.clone(), l0 = cam.look.clone();
@@ -850,11 +978,12 @@ function flyTo(levelIdx, onDone){
   const c1 = new THREE.Vector3(ZONE_X[levelIdx], C.look, 0);
   const a0 = cam.angle;
   let a1 = a0 + 2.6;
+  camMode = 'orbit'; focus = null; focusT = null;
   tween = {t:0, dur: AUTOTEST ? .08 : 3.4, c0, c1, l0, l1:c1.clone(), a0, a1, r0:cam.radius, h0:cam.height, r1:C.r, h1:C.h, onDone};
 }
 function easeInOut(k){ return k < .5 ? 4*k*k*k : 1 - Math.pow(-2*k+2, 3)/2; }
 
-function updateCamera(dt){
+function updateCamera(dt, time){
   if(tween){
     tween.t += dt;
     let k = Math.min(1, tween.t / tween.dur), e = easeInOut(k);
@@ -865,13 +994,24 @@ function updateCamera(dt){
     cam.center.lerpVectors(tween.c0, tween.c1, e);
     cam.look.lerpVectors(tween.l0, tween.l1, e);
     if(k >= 1){ const d = tween.onDone; tween = null; if(d) d(); }
-  } else {
+  } else if(camMode === 'orbit'){
     cam.angle += dt * 0.05;
   }
-  const cx = cam.center.x + Math.cos(cam.angle) * cam.radius;
-  const cz = cam.center.z + Math.sin(cam.angle) * cam.radius;
-  camera.position.set(cx + cam.mouse.x * 1.6, cam.height + Math.sin(performance.now()*.0006)*.5 - cam.mouse.y * 1.2, cz);
-  camera.lookAt(cam.look);
+
+  const pose = camMode === 'focus' && focus ? poseFocus(time) : poseOrbit();
+  let p = pose.p, l = pose.l;
+  if(focusT){
+    focusT.t += dt;
+    const k = Math.min(1, focusT.t / focusT.dur), e = easeInOut(k);
+    p = new THREE.Vector3().lerpVectors(focusT.p0, p, e);
+    l = new THREE.Vector3().lerpVectors(focusT.l0, l, e);
+    if(k >= 1) focusT = null;
+  }
+  rawPos.copy(p); rawLook.copy(l);           // «сырая» поза — без параллакса мыши
+  p.x += cam.mouse.x * 1.6;
+  p.y += Math.sin(performance.now()*.0006)*.5 - cam.mouse.y * 1.2;
+  camera.position.copy(p);
+  camera.lookAt(l);
 }
 
 /* ---------------- АТМОСФЕРА (небо и туман) ---------------- */
@@ -899,7 +1039,7 @@ function loop(){
   if(AUTOTEST || SHOTLEVEL >= 0) window.GAMEFRAMES = (window.GAMEFRAMES || 0) + 1;
   const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
   for(let i = 0; i < animated.length; i++) animated[i](t, dt);
-  updateCamera(dt);
+  updateCamera(dt, t);
   updateAtmo(dt, G.level);
   sky.position.set(camera.position.x, 0, camera.position.z);
   const cx = cam.center.x;
@@ -923,6 +1063,7 @@ let hintUsed = false;
 
 function startGame(){
   G.level = 0; G.q = 0; G.score = 0; G.levelScore = 0;
+  tween = null; focusT = null; camMode = 'orbit'; focus = null;
   cam.angle = CAM[0].start; cam.radius = CAM[0].r; cam.height = CAM[0].h;
   cam.center.set(ZONE_X[0], CAM[0].look, 0); cam.look.copy(cam.center);
   updateHud(); buildDots();
@@ -932,6 +1073,7 @@ function startGame(){
 function showLevelIntro(){
   const L = LEVELS[G.level];
   G.q = 0; G.levelScore = 0; hintUsed = false;
+  releaseFocus();
   updateHud(); buildDots();
   panel.classList.add('hidden');
   showModal(`
@@ -955,9 +1097,12 @@ function showQuestion(){
   $('hintBtn').style.display = hintUsed ? 'none' : 'block';
   $('hintBtn').disabled = false;
 
+  // камера приближается к объекту вопроса (озеро, горы, река…)
+  if(Q.focus) setFocus(Q.focus);
+
   // прогресс
   const pr = $('pProgress').children;
-  for(let i = 0; i < 3; i++){ pr[i].className = i < G.q ? 'on' : ''; }
+  for(let i = 0; i < L.questions.length; i++){ pr[i].className = i < G.q ? 'on' : ''; }
 
   const wrap = $('pOptions'); wrap.innerHTML = '';
   Q.a.forEach((text, i) => {
@@ -1021,11 +1166,12 @@ $('hintBtn').onclick = () => {
 function levelComplete(){
   const L = LEVELS[G.level];
   sWin();
+  releaseFocus();
   const last = G.level === LEVELS.length - 1;
   showModal(`
     <span class="bigEmoji">${L.emoji}✅</span>
     <h2>Локация пройдена!</h2>
-    <div class="scoreLine">${G.levelScore} из 30 очков на этом уровне · всего ${G.score}</div>
+    <div class="scoreLine">${G.levelScore} из 50 очков на этом уровне · всего ${G.score}</div>
     <p>Ты узнал:</p>
     <div class="chips">${L.shortFacts.map(f => `<span class="chip">💡 ${f}</span>`).join('')}</div>
     ${last
@@ -1037,28 +1183,33 @@ function levelComplete(){
     sClick();
     if(last){ endGame(); return; }
     const next = G.level + 1;
-    showModal(`<div class="loader"></div><h2>Летим к следующей локации…</h2>
-      <p>${LEVELS[next].emoji} ${LEVELS[next].name}</p>`);
     G.level = next;
     updateHud(); buildDots();
-    flyTo(next, () => { hideModal(); showLevelIntro(); });
+    hideModal();
+    // перелёт без затемнения/блюра и без кружка загрузки — просто баннер сверху
+    $('flyBanner').textContent = `🚀 Летим: ${LEVELS[next].emoji} ${LEVELS[next].name}`;
+    $('flyBanner').classList.add('show');
+    flyTo(next, () => {
+      $('flyBanner').classList.remove('show');
+      showLevelIntro();
+    });
   };
 }
 
 function endGame(){
   const s = G.score;
   let rank, emoji;
-  if(s >= 140){ rank = 'Мастер географии'; emoji = '🏆'; }
-  else if(s >= 110){ rank = 'Юный исследователь'; emoji = '🧭'; }
-  else if(s >= 80){ rank = 'Путешественник'; emoji = '🎒'; }
+  if(s >= 220){ rank = 'Мастер географии'; emoji = '🏆'; }
+  else if(s >= 170){ rank = 'Юный исследователь'; emoji = '🧭'; }
+  else if(s >= 110){ rank = 'Путешественник'; emoji = '🎒'; }
   else { rank = 'Новичок картографа'; emoji = '🗺️'; }
   const facts = LEVELS.flatMap(L => L.shortFacts);
   showModal(`
     <span class="bigEmoji">${emoji}</span>
     <h1>Квест завершён!</h1>
     <div class="rank">${rank}</div>
-    <div class="scoreLine">${s} из 150 очков</div>
-    <p>Пройдено 5 локаций · собрано 15 интересных фактов</p>
+    <div class="scoreLine">${s} из 250 очков</div>
+    <p>Пройдено 5 локаций · собрано 25 интересных фактов</p>
     <div class="chips">${facts.map(f => `<span class="chip">💡 ${f}</span>`).join('')}</div>
     <button class="btn green" id="btnAgain">🔄 Играть снова</button>
   `);
@@ -1068,18 +1219,30 @@ function endGame(){
 /* ---------------- СТАРТОВЫЙ ЭКРАН ---------------- */
 showModal(`
   <span class="bigEmoji">🌍</span>
-  <h1>ГЕО-КВЕСТ 3D</h1>
-  <p>Пятиэтапное путешествие по планете в формате 3D-квеста:<br>
+  <h1>ГЕО-КВЕСТ</h1>
+  <p>Пятиэтапное путешествие по планете в формате квеста:<br>
   горы → пиратский остров → тропические джунгли → болото → луг.</p>
   <div class="howto">
-    <div><b>🧭</b>Пройди 5 локаций — по 3 вопроса на каждой</div>
-    <div><b>💡</b>После каждого ответа открывается интересный факт</div>
-    <div><b>⭐</b>10 очков за верный ответ с первой попытки (максимум 150)</div>
+    <div><b>🧭</b>Пройди 5 локаций — по 5 вопросов на каждой</div>
+    <div><b>📷</b>На каждом вопросе камера приближается к его объекту: озеру, горам, реке</div>
+    <div><b>⭐</b>10 очков за верный ответ с первой попытки (максимум 250)</div>
   </div>
   <button class="btn green" id="btnStart" style="font-size:19px; padding:15px 34px">▶ Начать путешествие</button>
 `);
 $('btnStart').onclick = () => { sClick(); startGame(); };
 updateHud(); buildDots();
+
+/* ---------- отладка: ?lvl=N&q=M — сразу показать вопрос N на локации N ---------- */
+const DJ = location.search.match(/lvl=(\d+)[^\d]*q=(\d+)/);
+if (DJ){
+  G.level = Math.min(+DJ[1], LEVELS.length - 1);
+  G.q = Math.min(+DJ[2], LEVELS[G.level].questions.length - 1);
+  updateHud(); buildDots();
+  hideModal();
+  showQuestion();
+  if(focusT) focusT.dur = .01;
+  updateCamera(.05, 1.2);
+}
 
 /* ---------- СКРЫТЫЙ АВТОТЕСТ (?autotest=1, ?shot=N) — проверка игры ---------- */
 if (AUTOTEST || SHOTLEVEL >= 0){
@@ -1131,6 +1294,7 @@ if (AUTOTEST || SHOTLEVEL >= 0){
       if (b) b.click();
       return;
     }
+    if (el('flyBanner').classList.contains('show')) return;   // ждём окончания перелёта
     if (el('pFeedback').classList.contains('show')){ el('pNext').click(); return; }
     const Q = LEVELS[G.level].questions[G.q];
     if (WRONGMODE){
