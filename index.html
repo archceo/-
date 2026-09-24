@@ -20,6 +20,11 @@
   #hudLevel{font-size:14px; font-weight:600; color:#3a6b85;}
   #hudScore{margin-left:auto; font-size:16px; color:#a35b00;}
   #hudScore b{color:#e08000; font-size:19px;}
+  #muteBtn{width:44px; height:44px; padding:0; border-radius:50%; font-size:19px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:transform .15s, box-shadow .15s;}
+  #muteBtn:hover{transform:scale(1.08); box-shadow:0 8px 22px rgba(0,20,40,.26);}
+  #muteBtn:active{transform:scale(.95);}
 
   #dots{position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:20;
     display:flex; gap:8px; background:rgba(255,255,255,.75); padding:6px 12px; border-radius:999px;
@@ -45,6 +50,36 @@
   .qProgress i.on{background:linear-gradient(90deg,#39c2f0,#0e9ae0);}
   .qProgress i.ok{background:linear-gradient(90deg,#6ddc72,#2eb84a);}
   .qProgress i.bad{background:linear-gradient(90deg,#ff9d7a,#ef5f3c);}
+
+  /* ---------- Таймер вопроса ---------- */
+  #tRow{display:flex; align-items:center; gap:10px; margin:-2px 0 12px;}
+  #tNum{flex:0 0 auto; min-width:40px; height:40px; padding:0 4px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(160deg,#0e9ae0,#39c2f0); color:#fff; font-weight:900; font-size:16px;
+    box-shadow:0 4px 12px rgba(14,154,224,.35); transition:background .3s;}
+  #tBar{flex:1; height:10px; background:#dcecf7; border-radius:99px; overflow:hidden;
+    box-shadow:inset 0 2px 4px rgba(0,25,50,.13);}
+  #tFill{display:block; height:100%; width:100%; border-radius:99px;
+    background:linear-gradient(90deg,#39c2f0,#0e9ae0); transition:width .15s linear, background .3s;}
+  #tRow.warn #tNum{background:linear-gradient(160deg,#f0a000,#ffcc4d); box-shadow:0 4px 12px rgba(240,160,0,.4);}
+  #tRow.warn #tFill{background:linear-gradient(90deg,#ffcc4d,#f0a000);}
+  #tRow.crit #tNum{background:linear-gradient(160deg,#e04040,#ff7a5a); box-shadow:0 4px 12px rgba(224,64,64,.45);
+    animation:tPulse .45s infinite alternate;}
+  #tRow.crit #tFill{background:linear-gradient(90deg,#ff7a5a,#e04040);}
+  @keyframes tPulse{from{transform:scale(1);} to{transform:scale(1.14);}}
+
+  /* ---------- Отсчёт 3…2…1 по центру экрана ---------- */
+  #countdown{position:fixed; left:50%; top:50%; z-index:35; opacity:0; pointer-events:none;
+    transform:translate(-50%,-50%); font-size:min(32vh,190px); font-weight:900; line-height:1;
+    color:#fff; text-shadow:0 7px 0 rgba(12,76,110,.9), 0 18px 50px rgba(0,15,35,.65);}
+  #countdown.show{animation:cdIn .95s cubic-bezier(.2,.75,.3,1) forwards;}
+  @keyframes cdIn{
+    0%{opacity:0; transform:translate(-50%,-50%) scale(1.75);}
+    14%{opacity:1; transform:translate(-50%,-50%) scale(1);}
+    78%{opacity:1; transform:translate(-50%,-50%) scale(1);}
+    100%{opacity:0; transform:translate(-50%,-50%) scale(.82);}
+  }
+
   #pQuestion{font-size:18px; font-weight:800; color:#123449; line-height:1.35; margin-bottom:14px;}
   .opt{display:flex; align-items:center; gap:10px; width:100%; text-align:left; cursor:pointer;
     background:#fff; border:2px solid #cfe2ef; border-radius:14px; padding:11px 12px; margin-bottom:9px;
@@ -117,9 +152,16 @@
     background:#0c1b2a; color:#cfe8f7; text-align:center; padding:30px; font-size:17px; line-height:1.6;}
 
   @media (max-width:820px){
+    #hud{gap:6px; padding:8px 6px;}
+    .hudBox{padding:6px 8px; font-size:12.5px; border-radius:12px;}
+    #hud .logo{font-size:13.5px;}
+    #hudLevel{font-size:12px;}
+    #hudScore{font-size:13px;} #hudScore b{font-size:15px;}
+    #muteBtn{width:34px; height:34px; font-size:15px;}
     #panel{left:8px !important; right:8px; top:auto !important; bottom:8px; width:auto; transform:none;
       max-height:56vh; overflow:auto;}
     #panel.hidden{transform:translateY(40px);}
+    #countdown{top:28%; font-size:min(20vh,110px);}
     #dots{top:56px;}
     #footer{font-size:13px; bottom:10px;}
     #flyBanner{top:100px; font-size:13.5px; padding:7px 16px;}
@@ -127,16 +169,23 @@
     .card h1{font-size:26px;}
     .howto div{width:135px; font-size:12px;}
   }
+  @media (max-width:440px){
+    #hudLevel{display:none;}   /* узкие телефоны: название локации дублируется бейджем панели */
+    #hudScore{white-space:nowrap;}
+  }
 </style>
 </head>
 <body>
 
 <canvas id="scene"></canvas>
 
+<audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+
 <div id="hud">
   <div class="hudBox logo">🌍 ГЕО-<span>КВЕСТ</span></div>
   <div class="hudBox" id="hudLevel">Локация не выбрана</div>
   <div class="hudBox" id="hudScore">⭐ <b id="scoreVal">0</b> очков</div>
+  <button class="hudBox" id="muteBtn" title="Выключить музыку" aria-label="Музыка вкл/выкл">🔊</button>
 </div>
 
 <div id="dots"></div>
@@ -151,6 +200,7 @@
     <span class="qCount" id="pCount">Вопрос 1 из 5</span>
   </div>
   <div class="qProgress" id="pProgress"><i></i><i></i><i></i><i></i><i></i></div>
+  <div id="tRow"><span id="tNum">30</span><div id="tBar"><i id="tFill"></i></div></div>
   <div id="pQuestion">…</div>
   <div id="pOptions"></div>
   <div id="pFeedback">
@@ -160,6 +210,8 @@
   </div>
   <button class="btn ghost" id="hintBtn">💡 Подсказка 50:50 (один раз на уровень)</button>
 </div>
+
+<div id="countdown"></div>
 
 <div id="modal">
   <div class="card" id="modalCard"></div>
@@ -341,6 +393,8 @@ const CAM = [
 
 /* ---------------- СОСТОЯНИЕ ИГРЫ ---------------- */
 const G = { level:0, q:0, score:0, levelScore:0, tried:false, hintUsed:false, locked:false, started:false };
+/* время на вопрос: 30 сек (параметр ?qt=N — для отладки) */
+const QTIME = (() => { const m = location.search.match(/qt=(\d+)/); return m ? +m[1] : 30; })();
 
 const $ = id => document.getElementById(id);
 const scoreVal = $('scoreVal'), hudLevel = $('hudLevel');
@@ -381,6 +435,28 @@ const sWrong = () => { tone(240,.18,0,'square',.08); tone(180,.25,.14,'square',.
 const sWin   = () => { [523,659,784,1046].forEach((f,i)=>tone(f,.22,i*.13,'triangle',.1)); };
 const sClick = () => tone(520,.07,0,'triangle',.06);
 
+/* ---------------- ФОНОВАЯ МУЗЫКА ----------------
+   Браузеры запрещают autoplay без жеста пользователя — стартуем по первому
+   pointerdown/keydown/touchstart. Кнопка 🔊 в шапке включает/выключает (mute).
+   Один и тот же обработчик повторно не навешивается, защита — флаг bgmOn. */
+const bgm = $('bgm'), muteBtn = $('muteBtn');
+bgm.volume = .3;
+let bgmOn = false;
+function bgmStart(){
+  if(bgmOn) return;
+  bgm.play().then(() => {
+    bgmOn = true;
+    muteBtn.textContent = bgm.muted ? '🔇' : '🔊';
+  }).catch(() => {});
+}
+['pointerdown', 'keydown', 'touchstart'].forEach(ev =>
+  addEventListener(ev, bgmStart, { passive: true }));
+muteBtn.addEventListener('click', () => {
+  bgm.muted = !bgm.muted;
+  muteBtn.textContent = bgm.muted ? '🔇' : '🔊';
+  muteBtn.title = bgm.muted ? 'Включить музыку' : 'Выключить музыку';
+});
+
 /* ================================================================
    THREE.JS: МИР
    ================================================================ */
@@ -417,7 +493,7 @@ const sky = new THREE.Mesh(
   new THREE.ShaderMaterial({
     uniforms: skyU, side: THREE.BackSide, depthWrite:false, fog:false,
     vertexShader:'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-    fragmentShader:'varying vec3 vP; uniform vec3 top; uniform vec3 bottom; void main(){ float h = clamp(normalize(vP).y*0.65+0.32,0.0,1.0); gl_FragColor = vec4(mix(bottom, top, h), 1.0); #include <tonemapping_fragment>\n#include <encodings_fragment> }'
+    fragmentShader:'varying vec3 vP; uniform vec3 top; uniform vec3 bottom; void main(){ float h = clamp(normalize(vP).y*0.65+0.32,0.0,1.0); gl_FragColor = vec4(mix(bottom, top, h), 1.0);\n#include <tonemapping_fragment>\n#include <encodings_fragment>\n}'
   })
 );
 sky.frustumCulled = false;
@@ -472,14 +548,110 @@ function water(x, z, r, color, opacity=.88, y=.12){
   animated.push(t => { m.position.y = y + Math.sin(t*1.2 + x)*0.035; });
   return m;
 }
-/* прямая речка — для вопросов про реки (джунгли и луг) */
-function riverPlane(w, len, x, z){
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, len),
-    new THREE.MeshStandardMaterial({color:0x4cc3ec, roughness:.15, metalness:.2, transparent:true, opacity:.9, alphaMap:SOFT}));
-  m.rotation.x = -Math.PI/2; m.position.set(x, .12, z); m.receiveShadow = true; world.add(m);
-  const y0 = .12;
-  animated.push(t => { m.position.y = y0 + Math.sin(t*1.1 + x*.1)*.03; });
+/* ---------- ВОДА: текстуры течения и края русла ---------- */
+/* рябь вдоль потока: белая база + продольные струи + бегущие волны (бесшовно по Y) */
+const FLOW = canvasTex((g,w,h) => {
+  g.fillStyle = '#ffffff'; g.fillRect(0,0,w,h);
+  for(let i = 0; i < 22; i++){
+    g.fillStyle = Math.random() < .5 ? 'rgba(175,228,247,.55)' : 'rgba(135,205,238,.5)';
+    g.fillRect(Math.random()*w, 0, 2 + Math.random()*5, h);
+  }
+  for(let i = 0; i < 34; i++){
+    const y = Math.random()*h, bh = 3 + Math.random()*7,
+          x0 = Math.random()*w, len = 24 + Math.random()*80;
+    g.fillStyle = 'rgba(255,255,255,.6)';
+    [y, y - h, y + h].forEach(yy => {           // копии для бесшовности по Y
+      g.beginPath();
+      g.roundRect ? g.roundRect(x0, yy, len, bh, bh/2) : g.fillRect(x0, yy, len, bh);
+      g.fill();
+    });
+  }
+}, 128, 256);
+FLOW.wrapS = FLOW.wrapT = THREE.RepeatWrapping;
+/* Скролл течения. В three r149 на весь материал — ОДНА матрица uvTransform
+   (берётся из map.matrix) и общий varying vUv, поэтому анимация FLOW.offset
+   сдвигала и alphaMap: v уезжал за 1, текстура края обрезалась по прозрачному
+   «тающему» концу — альфа становилась 0 и река исчезала. Скроллим карту
+   течения прямо в шейдере, offset держим нулевым. */
+const RIVER_SCROLL = { value: 0 };
+animated.push((t, dt) => { RIVER_SCROLL.value = (RIVER_SCROLL.value - dt * .3 + 1) % 1; });
+function riverFlow(mat){
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uFlow = RIVER_SCROLL;
+    sh.fragmentShader = ('uniform float uFlow;\n' + sh.fragmentShader).replace(
+      '#include <map_fragment>',
+      '#ifdef USE_MAP\n\tvec4 sampledDiffuseColor = texture2D( map, vUv + vec2( 0.0, uFlow ) );\n\tdiffuseColor *= sampledDiffuseColor;\n#endif'
+    );
+  };
+}
+
+/* край русла: мягкие боковые края + тающие концы (зелёный канал = альфа) */
+const RIVER_EDGE = canvasTex((g,w,h) => {
+  g.fillStyle = '#000'; g.fillRect(0,0,w,h);
+  let gr = g.createLinearGradient(0,0,w,0);
+  gr.addColorStop(0,'#000'); gr.addColorStop(.1,'#fff'); gr.addColorStop(.9,'#fff'); gr.addColorStop(1,'#000');
+  g.fillStyle = gr; g.fillRect(0,0,w,h);
+  g.globalCompositeOperation = 'multiply';      // умножаем RGB на затухание к концам
+  gr = g.createLinearGradient(0,0,0,h);
+  gr.addColorStop(0,'#000'); gr.addColorStop(.13,'#fff'); gr.addColorStop(.87,'#fff'); gr.addColorStop(1,'#000');
+  g.fillStyle = gr; g.fillRect(0,0,w,h);
+  g.globalCompositeOperation = 'source-over';
+}, 128, 128);
+
+/* край водопада: только боковое затухание, концы не тают */
+const FALL_EDGE = canvasTex((g,w,h) => {
+  const gr = g.createLinearGradient(0,0,w,0);
+  gr.addColorStop(0,'#000'); gr.addColorStop(.12,'#fff'); gr.addColorStop(.88,'#fff'); gr.addColorStop(1,'#000');
+  g.fillStyle = gr; g.fillRect(0,0,w,h);
+}, 64, 16);
+
+/* ---------- ЛЕНТА-РЕКА ВДОЛЬ ПУТИ [[x,z], …] ---------- */
+function riverPath(pts, w){
+  const n = pts.length, pos = [], uvs = [], idx = [], cum = [0];
+  for(let i = 1; i < n; i++) cum.push(cum[i-1] + Math.hypot(pts[i][0]-pts[i-1][0], pts[i][1]-pts[i-1][1]));
+  const total = cum[n-1] || 1, hw = w/2;
+  for(let i = 0; i < n; i++){
+    const a = pts[Math.max(0,i-1)], b = pts[Math.min(n-1,i+1)];
+    let dx = b[0]-a[0], dz = b[1]-a[1];
+    const L = Math.hypot(dx,dz) || 1; dx /= L; dz /= L;
+    const nx = -dz, nz = dx, v = cum[i]/total;
+    pos.push(pts[i][0]+nx*hw, .13, pts[i][1]+nz*hw,
+             pts[i][0]-nx*hw, .13, pts[i][1]-nz*hw);
+    uvs.push(0, v, 1, v);
+  }
+  for(let i = 0; i < n-1; i++){
+    const a = i*2;
+    idx.push(a, a+2, a+1, a+1, a+2, a+3);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  /* координаты в геометрии абсолютные — переносим в центр меша,
+     иначе three сортирует прозрачные объекты по миру (0,0,0),
+     и земляные патчи рисуются ПОСЛЕ реки и заливают её */
+  geo.computeBoundingSphere();
+  const c = geo.boundingSphere.center.clone();
+  geo.translate(-c.x, -c.y, -c.z);
+  geo.computeBoundingSphere();   // обновить сферу для фрустум-куллинга
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    color:0x4cc3ec, map:FLOW, alphaMap:RIVER_EDGE, transparent:true, opacity:.93,
+    roughness:.15, metalness:.2, depthWrite:false, side:THREE.DoubleSide
+  }));
+  m.position.copy(c);
+  riverFlow(m.material);
+  world.add(m);
   return m;
+}
+/* прямая речка с лёгкой извилистостью — для вопросов про реки (джунгли и луг) */
+function riverPlane(w, len, x, z){
+  const pts = [], n = 16, A = w * .4;
+  for(let i = 0; i <= n; i++){
+    const t = i/n;
+    pts.push([x - Math.sin(t * Math.PI * 2 * 1.25) * A, z - len/2 + t*len]);
+  }
+  return riverPath(pts, w);
 }
 function canvasTex(draw, w=128, h=128){
   const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -541,13 +713,24 @@ function palm(x, z, s=1, leafA=0x3fa34d, leafB=0x2f8b3f){
   animated.push(t => { top.rotation.z = Math.sin(t*.7 + x)*.045; top.rotation.x = Math.cos(t*.6 + z)*.035; });
   return g;
 }
-function flowerPatch(x, z, colors, n=12, r=7){
+function flowerPatch(x, z, colors, n=12, r=7, skip){
   for(let i=0;i<n;i++){
+    const px = x + rnd(-r,r), pz = z + rnd(-r,r);
+    if(skip && skip(px, pz)) continue;                 // не сажаем прямо в русло реки
     const f = reg(sph(rnd(.18,.34), colors[(Math.random()*colors.length)|0], {roughness:.7}), false);
-    f.position.set(x + rnd(-r,r), rnd(.2,.45), z + rnd(-r,r));
+    f.position.set(px, rnd(.2,.45), pz);
     world.add(f);
     const stem = cyl(.03,.03,.35,0x3f8b3f,5); stem.position.set(f.position.x, .17, f.position.z); world.add(stem);
   }
+}
+/* отдельный травяной кустик */
+function grassTuft(x, z){
+  const c = [0x53ad42, 0x69c255, 0x47a13a][(Math.random()*3)|0];
+  const h = rnd(.5, .95);
+  const b = reg(cone(rnd(.13,.21), h, c, 5), false);
+  b.position.set(x, h/2 + .03, z);
+  b.rotation.z = rnd(-.22, .22);
+  world.add(b);
 }
 function rocks(x, z, n=5, r=1.5, color=0x9aa0a8){
   for(let i=0;i<n;i++){
@@ -573,11 +756,10 @@ function buildMountains(){
   // зелёные предгорья
   hill(x-40,-34,20,0x5fae4a); hill(x+30,-30,24,0x66b455); hill(x+64,-26,16,0x5fae4a);
 
-  // озеро и река
+  // озеро и река — извилистое русло из озера вниз по долине
   water(x + 8, 8, 25, 0x35b7e6, .9, .13);
-  const river = new THREE.Mesh(new THREE.PlaneGeometry(7, 34),
-    new THREE.MeshStandardMaterial({color:0x4cc3ec, roughness:.15, metalness:.2, transparent:true, opacity:.9, alphaMap:SOFT}));
-  river.rotation.x = -Math.PI/2; river.position.set(x + 8, .12, 46); world.add(river);
+  riverPath([[x+8,26],[x+6,36],[x+10,46],[x+7,56],[x+10,66],[x+8,76]], 7);
+  water(x + 9, 78, 5.5, 0x4cc3ec, .9, .14);   // маленькое озеро, куда впадает река
 
   // скала с башенками (слева)
   const cliffL = reg(cyl(5,8,11,0x9a8b76,8)); cliffL.position.set(x-32, 5.5, -2); world.add(cliffL);
@@ -588,13 +770,103 @@ function buildMountains(){
     const r = reg(cone(2.2,3.4,0x7fb0d8,8)); r.position.set(x-32+p[0], 19, -2+p[1]); world.add(r);
   });
 
-  // водопад справа
-  const cliffR = reg(cyl(6,10,16,0x8f8474,8)); cliffR.position.set(x+36, 8, -6); world.add(cliffR);
-  const fall = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 15),
-    new THREE.MeshStandardMaterial({color:0xeafaff, roughness:.2, transparent:true, opacity:.78, side:THREE.DoubleSide, emissive:0x9ad8ef, emissiveIntensity:.35}));
-  fall.position.set(x+36, 7.5, 2.2); world.add(fall);
-  const splash = water(x+36, 5, 4.5, 0xdff6ff, .85, .2);
-  animated.push(t => { fall.material.opacity = .68 + Math.sin(t*7)*.1; fall.position.y = 7.5 + Math.sin(t*4)*.12; });
+  // ===== ВОДОПАД: плато-исток, карниз, ниспадающая стена воды, пена и туман =====
+  const wx = x + 36, wz = -6;
+  const cliffR = reg(cyl(6, 9.5, 16, 0x8f8474, 8)); cliffR.position.set(wx, 8, wz); world.add(cliffR);
+
+  const FALLFLOW = FLOW.clone(); FALLFLOW.needsUpdate = true;
+  FALLFLOW.wrapS = FALLFLOW.wrapT = THREE.RepeatWrapping;
+
+  // ручей течёт по плато к карнизу
+  water(wx, -5.5, 3.2, 0x4cc3ec, .9, 16.1);
+  const flowMat = () => new THREE.MeshStandardMaterial({
+    color:0x4cc3ec, map:FLOW, alphaMap:RIVER_EDGE, transparent:true, opacity:.93,
+    roughness:.15, metalness:.2, depthWrite:false, side:THREE.DoubleSide});
+  const feed = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 7), flowMat());
+  feed.rotation.x = -Math.PI/2; feed.rotation.z = Math.PI;
+  feed.position.set(wx, 16.12, -3.6); world.add(feed);
+
+  // каменный карниз, с которого летит вода
+  const lipRock = reg(box(6, 1.6, 4.4, 0x9a8f7c)); lipRock.position.set(wx, 15.1, 1.4); world.add(lipRock);
+  const lipW = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 4.2), flowMat());
+  lipW.rotation.x = -Math.PI/2; lipW.rotation.z = Math.PI;
+  lipW.position.set(wx, 16.0, 1.4); world.add(lipW);
+
+  // ниспадающая стена воды (сверху прижата к карнизу, книзу чуть оттопырена)
+  const fallMat = new THREE.MeshStandardMaterial({
+    color:0xeafaff, map:FALLFLOW, alphaMap:FALL_EDGE, transparent:true, opacity:.92,
+    side:THREE.DoubleSide, roughness:.2, metalness:.05, depthWrite:false,
+    emissive:0x9ad8ef, emissiveIntensity:.3});
+  const fall = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 15.5, 1, 1), fallMat);
+  fall.position.set(wx, 8.15, 4.05);
+  fall.rotation.x = -0.071;
+  world.add(fall);
+
+  // бассейн у подножия (сливается с горным озером)
+  water(wx, 6.5, 5.6, 0x86e4f5, .93, .15);
+
+  // пена
+  const foams = [];
+  [[0, 5, 3.2], [-2.2, 5.8, 2.1], [2.3, 5.6, 1.9]].forEach((f, k) => {
+    const m = new THREE.Mesh(new THREE.CircleGeometry(f[2], 22),
+      new THREE.MeshStandardMaterial({color:0xffffff, roughness:.55, transparent:true, opacity:.8, alphaMap:SOFT, depthWrite:false}));
+    m.rotation.x = -Math.PI/2; m.position.set(wx + f[0], .32 + k*.03, f[1]);
+    world.add(m); foams.push(m);
+  });
+  const bubbles = [];
+  for(let i = 0; i < 7; i++){
+    const b = sph(rnd(.25,.55), 0xffffff, {roughness:.5, transparent:true, opacity:.9}, 8, 6);
+    b.castShadow = false;
+    b.position.set(wx + rnd(-2.6,2.6), .4, 5 + rnd(-1.6,1.6));
+    world.add(b); bubbles.push(b);
+  }
+  // туман, поднимающийся от удара воды
+  const mists = [];
+  for(let i = 0; i < 5; i++){
+    const mm = sph(rnd(.8,1.6), 0xffffff, {roughness:1, transparent:true, opacity:.25}, 10, 7);
+    mm.castShadow = false;
+    mm.position.set(wx + rnd(-2.5,2.5), 1, 5 + rnd(-1.5,1.5));
+    mm.userData = {ph: Math.random(), sp: rnd(.16,.26)};
+    world.add(mm); mists.push(mm);
+  }
+  // камни по берегу бассейна
+  [[-4.6,8.5,1.3],[4.8,7.2,1.05],[-3.6,11,1.1]].forEach(p => {
+    const rr = reg(dode(p[2], 0x9aa0a8), false);
+    rr.position.set(wx + p[0], p[2]*.5, p[1]);
+    rr.rotation.set(rnd(0,3), rnd(0,3), rnd(0,3));
+    world.add(rr);
+  });
+
+  animated.push((t, dt) => {
+    /* FLOW.offset больше не анимируем — скролл делает RIVER_SCROLL в шейдере (см. riverFlow) */
+    FALLFLOW.offset.y = (FALLFLOW.offset.y + dt * 1.4) % 1;  // вода летит вниз
+    foams.forEach((m, i) => {
+      const s = 1 + Math.sin(t*2.2 + i*2.1)*.07;
+      m.scale.set(s, s, 1);
+      m.material.opacity = .72 + Math.sin(t*3 + i)*.12;
+    });
+    bubbles.forEach((b, i) => { b.position.y = .4 + Math.abs(Math.sin(t*2.6 + i*1.7))*.5; });
+    mists.forEach(m => {
+      const u = (t * m.userData.sp + m.userData.ph) % 1;
+      m.position.y = .8 + u * 6;
+      m.material.opacity = .26 * (1 - u);
+      const s = .7 + u * 1.3; m.scale.set(s, s, s);
+    });
+  });
+
+  // пальмовая роща вокруг водопада
+  [[48,8,1.1],[57,0,1],[50,24,1.2],[59,16,.95],[45,38,1.1],[33,44,1.05],[64,30,1.15]]
+    .forEach(p => palm(x + p[0], p[1], p[2]));
+
+  // трава по берегам озера и реки
+  for(let i = 0; i < 110; i++){
+    const a = rnd(0, 6.28), rr = Math.sqrt(Math.random()) * 44;
+    const gx = x + 8 + Math.cos(a)*rr, gz = 40 + Math.sin(a)*rr;
+    if(Math.hypot(gx - (x+8), gz - 8) < 27) continue;               // не в озере
+    if(Math.hypot(gx - wx, gz - 6.5) < 7.5) continue;               // не в бассейне водопада
+    if(gz > 24 && gz < 78 && Math.abs(gx - (x+8)) < 9) continue;    // не в русле реки
+    grassTuft(gx, gz);
+  }
 
   rocks(x-14, 26, 6, 1.6); rocks(x+20, 30, 5, 1.3, 0xa8b0b8);
   flowerPatch(x-6, 34, [0xff7fb0, 0xffd447, 0xb45dff], 14, 8);
@@ -724,9 +996,10 @@ function buildJungle(){
   });
 
   // цветы и кусты
-  flowerPatch(x, 30, [0xff6fb1, 0xff9a3c, 0xffd447, 0xffffff], 16, 12);
-  flowerPatch(x-18, -18, [0xb45dff, 0xff6fb1, 0xff5b5b], 14, 10);
-  flowerPatch(x+20, 8, [0xffd447, 0xff9a3c, 0xffffff], 14, 10);
+  const noJRiv = (px, pz) => Math.abs(px - (x - 44)) < 9 && pz > -24 && pz < 64;
+  flowerPatch(x, 30, [0xff6fb1, 0xff9a3c, 0xffd447, 0xffffff], 16, 12, noJRiv);
+  flowerPatch(x-18, -18, [0xb45dff, 0xff6fb1, 0xff5b5b], 14, 10, noJRiv);
+  flowerPatch(x+20, 8, [0xffd447, 0xff9a3c, 0xffffff], 14, 10, noJRiv);
   [[-16,12],[18,-14],[-26,34],[28,36],[8,-36]].forEach(p => {
     const b1 = reg(sph(rnd(2.4,3.6), 0x2b7a34, undefined, 12, 8), false);
     b1.scale.y = .8; b1.position.set(x+p[0], 1.6, p[1]); world.add(b1);
@@ -864,6 +1137,15 @@ function buildMeadow(){
   rocks(x - 42, 62, 5, 1.6, 0xbdb49a);
   rocks(x + 40, 44, 4, 1.3, 0xbdb49a);
 
+  // больше травы по всему лугу
+  for(let i = 0; i < 160; i++){
+    const a = rnd(0, 6.28), rr = Math.sqrt(Math.random()) * 80;
+    const gx = x + Math.cos(a)*rr, gz = Math.sin(a)*rr;
+    if(gz > -20 && Math.abs(gx - x) < 14) continue;            // не лезем в реку
+    if(Math.hypot(gx - (x+10), gz + 8) < 15) continue;         // не под дубом
+    grassTuft(gx, gz);
+  }
+
   // большой дуб с табличкой
   const oak = new THREE.Group();
   const trunk = reg(cyl(1.7, 2.6, 13, 0x8a5a30, 10)); trunk.position.y = 6.5; oak.add(trunk);
@@ -873,7 +1155,7 @@ function buildMeadow(){
       const bl = reg(sph(b[3], b[4], undefined, 14, 10), false);
       bl.position.set(b[0], b[1], b[2]); oak.add(bl);
     });
-  oak.position.set(10, 0, -8); oak.scale.setScalar(1.1);
+  oak.position.set(10, 0, -8); oak.scale.setScalar(1.7);
   oak.position.x += x; world.add(oak);
   animated.push(t => { oak.rotation.z = Math.sin(t*.4)*.012; });
 
@@ -908,9 +1190,10 @@ function buildMeadow(){
   });
   rocks(x - 16, 12, 6, 1.7, 0xbdb49a);
   rocks(x + 22, 8, 5, 1.4, 0xbdb49a);
-  flowerPatch(x - 6, 22, [0xffffff, 0xffd1e8, 0xffd447], 20, 14);
-  flowerPatch(x + 14, 34, [0xffffff, 0xb45dff, 0xff9ad4], 18, 12);
-  flowerPatch(x - 28, -4, [0xffffff, 0xffd447], 16, 10);
+  const noMRiv = (px, pz) => Math.abs(px - x) < 13 && pz > -20;
+  flowerPatch(x - 6, 22, [0xffffff, 0xffd1e8, 0xffd447], 20, 14, noMRiv);
+  flowerPatch(x + 14, 34, [0xffffff, 0xb45dff, 0xff9ad4], 18, 12, noMRiv);
+  flowerPatch(x - 28, -4, [0xffffff, 0xffd447], 16, 10, noMRiv);
 
   cloudAt(x-40, 40, -46, 1.4, 1.1); cloudAt(x+30, 48, -34, 1.2, .9);
   cloudAt(x+56, 36, 4, 1, 1.4); cloudAt(x-16, 52, -64, 1.6, .7);
@@ -1086,6 +1369,63 @@ function showLevelIntro(){
   $('btnGo').onclick = () => { sClick(); hideModal(); showQuestion(); };
 }
 
+/* ---------------- ТАЙМЕР ВОПРОСА (30 сек, отсчёт 3…2…1) ---------------- */
+let qEnd = 0, qTicking = false, qTickSec = -1;
+function startTimer(){
+  qEnd = performance.now() + QTIME*1000;
+  qTicking = true; qTickSec = -1;
+  $('tNum').textContent = QTIME;
+  $('tFill').style.width = '100%';
+  $('tRow').className = '';
+  const cd = $('countdown');
+  cd.classList.remove('show'); cd.textContent = '';
+}
+function stopTimer(){
+  qTicking = false;
+  $('countdown').classList.remove('show');
+}
+function showCount(n){
+  const cd = $('countdown');
+  cd.classList.remove('show'); void cd.offsetWidth;   // перезапуск анимации
+  cd.textContent = n;
+  cd.style.color = ['', '#ff5a5a', '#ffd447', '#ffffff'][n];
+  cd.classList.add('show');
+}
+function timeUp(){
+  if(!qTicking) return;
+  stopTimer();
+  if(panel.classList.contains('hidden')) return;
+  const Q = LEVELS[G.level].questions[G.q];
+  const opts = [...$('pOptions').children];
+  opts[Q.c].classList.add('correct');
+  opts.forEach(o => o.disabled = true);
+  G.tried = true;
+  sWrong();
+  $('pVerdict').className = 'verdict no';
+  $('pVerdict').textContent = '⏰ Время вышло! Правильный ответ: ' + LETTERS[Q.c] + ') ' + Q.a[Q.c];
+  $('pFact').innerHTML = '<b>💡 Запомни факт</b>' + Q.f;
+  $('pFeedback').classList.add('show');
+  $('hintBtn').style.display = 'none';
+  updateHud();
+  $('pProgress').children[G.q].className = 'bad';
+}
+function tickTimer(){
+  if(!qTicking) return;
+  const left = qEnd - performance.now();
+  if(left <= 0){ timeUp(); return; }
+  const sec = Math.ceil(left/1000);
+  $('tFill').style.width = (left/(QTIME*1000)*100).toFixed(1) + '%';
+  $('tNum').textContent = sec;
+  $('tRow').className = sec <= 3 ? 'crit' : sec <= 10 ? 'warn' : '';
+  if(sec !== qTickSec){
+    qTickSec = sec;
+    if(sec <= 3){ tone(1000 + (3-sec)*150, .1, 0, 'square', .1); showCount(sec); }
+    else if(sec <= 10) tone(760, .04, 0, 'square', .045);   // тревожный тик
+    else tone(620, .028, 0, 'square', .03);                 // спокойный тик каждую секунду
+  }
+}
+setInterval(tickTimer, 90);
+
 function showQuestion(){
   const L = LEVELS[G.level], Q = L.questions[G.q];
   G.tried = false;
@@ -1113,10 +1453,12 @@ function showQuestion(){
     b.onclick = () => answer(i, b);
     wrap.appendChild(b);
   });
+  startTimer();
 }
 
 function answer(i, btn){
   if(G.locked) return;
+  stopTimer();
   const Q = LEVELS[G.level].questions[G.q];
   const opts = [...$('pOptions').children];
   if(i === Q.c){
